@@ -1,0 +1,16 @@
+.captionator-title {
+	font-size: 16pt;
+	font-family: Helvetica, Arial, sans-serif;
+	color: white;
+	text-shadow: black 0px 0px 5px;
+	font-weight: bold;
+	width: 1024px;
+	text-align: center;
+	display: block;
+	margin-top: -100px;
+	position: absolute;
+	z-index:10;
+	background-color: rgba(0,0,0,0.5);
+	min-height: 64px;
+	line-height: 32px;
+}

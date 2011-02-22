@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>HTML5 Video Closed Captioning Test</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" media="screen" href="css/captions.css"/>
+	</head>
+	<body>
+		<h1>HTML5 Video Closed Captioning Test</h1>
+		<video controls data-captions id="videoTest">
+			<source src="video/grid.m4v" type="video/mp4" width="1024" height="432"/>
+			<track kind="captions" src="video/grid-en.srt" srclang="en" label="English Subtitles" />
+			<track kind="captions" src="video/grid-de.srt" srclang="de" label="German Subtitles" />
+		</video>
+		<div id="captions"></div>
+		<h2>Transcript</h2>
+		<div id="transcript"></div>
+		<script type="text/javascript" src="js/captions.js"></script>
+		<script type="text/javascript">
+			captionator.captionify(null,{
+				container: "#captions"
+			});
+			
+			captionator.generateTranscript("#videoTest","#captions");
+		</script>
+	</body>
+</html>
