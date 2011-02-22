@@ -11,17 +11,17 @@
 			<source src="video/arduino.m4v" type="video/mp4" width="1024" height="464"/>
 			<track kind="captions" src="video/arduino-en.srt" srclang="en" label="English Subtitles" />
 			<track kind="captions" src="video/arduino-de.srt" srclang="de" label="German Subtitles" />
+			<track kind="captions" src="video/arduino-ja.srt" srclang="ja" label="Japanese Subtitles" />
 		</video>
-		<div id="captions"></div>
+		<!-- <div id="captions"></div> -->
 		<h2>Transcript</h2>
 		<div id="transcript"></div>
 		<script type="text/javascript" src="js/captions.js"></script>
 		<script type="text/javascript">
-			captionator.captionify(null,null,{
-				container: "#captions"
+			window.addEventListener("load",function(eventData) {
+				captionator.captionify();
+				captionator.generateTranscript("#videoTest","#transcript");
 			});
-			
-			captionator.generateTranscript("#videoTest","#transcript");
 		</script>
 	</body>
 </html>

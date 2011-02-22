@@ -4,13 +4,26 @@
 	color: white;
 	text-shadow: black 0px 0px 5px;
 	font-weight: bold;
-	width: 1024px;
+	width: 984px;
+	padding-left: 20px;
+	padding-right: 20px;
 	text-align: center;
 	display: block;
-	margin-top: -100px;
-	position: absolute;
-	z-index:10;
-	background-color: rgba(0,0,0,0.5);
-	min-height: 64px;
 	line-height: 32px;
+}
+
+.arduino {
+	color: red;
+	text-transform: uppercase;
+	font-family: "Helvetica Neue";
+	font-weight: lighter;
+}
+
+.captionator-title a {
+	text-decoration: none;
+	font-weight: bold;
+	letter-spacing: 5pt;
+	font-family: "Helvetica Neue";
+	font-weight: bolder;
+	color: red;
 }

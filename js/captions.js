@@ -174,6 +174,12 @@ var captionator = {
 							var subtitleIndex;
 							var captionContainer = null;
 							
+							if (options.container) {
+								captionContainer = options.container;
+							} else {
+								captionContainer = "#captions"
+							}
+							
 							if (typeof(captionContainer) == "string") {
 								captionContainer = document.querySelectorAll(captionContainer)[0];
 							}
@@ -181,6 +187,17 @@ var captionator = {
 							if (typeof(captionContainer) != "object") {
 								captionContainer = document.createElement("div");
 								captionContainer.id = "captions";
+								eventData.srcElement.parentNode.appendChild(captionContainer);
+								
+								// Style up
+								var videoControlHeight = 32;
+								var videoComputedStyle = window.getComputedStyle(eventData.srcElement,null);
+								captionContainer.style.position = "absolute";
+								captionContainer.style.width = parseInt(videoComputedStyle.getPropertyValue("width"),10) + "px";
+								captionContainer.style.height = Math.floor(parseInt(videoComputedStyle.getPropertyValue("height"),10)*0.15) + "px";
+								captionContainer.style.backgroundColor = "rgba(0,0,0,0.5)";
+								captionContainer.style.left = eventData.srcElement.offsetLeft + "px";
+								captionContainer.style.top = ((eventData.srcElement.offsetTop + parseInt(videoComputedStyle.getPropertyValue("height"),10)) - (parseInt(captionContainer.style.height) + videoControlHeight)) + "px";
 							}
 							
 							if (captionData.length) {
@@ -194,12 +211,14 @@ var captionator = {
 								subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
 								if (!subtitlesToDisplay.length) {
 									
-									if (document.getElementById("captions").innerHTML.length) {
-										document.getElementById("captions").innerHTML = "";
+									if (captionContainer.innerHTML.length) {
+										captionContainer.innerHTML = "";
+										captionContainer.style.display = "none";
 									}
 								} else {
-									if (document.getElementById("captions").innerHTML != subtitleText) {
-										document.getElementById("captions").innerHTML = subtitleText;
+									if (captionContainer.innerHTML != subtitleText) {
+										captionContainer.innerHTML = subtitleText;
+										captionContainer.style.display = "block";
 									}
 								}
 							}

@@ -72,7 +72,7 @@ NB: As a speaker of Japanese, I am fully aware that these subtitles range from s
 
 19
 00:01:58,500 --> 00:02:00,100
-そこで、arduinoので人形を作る...
+そこで、<span class="arduino">arduino</span>ので人形を作る...
 
 20
 00:02:00,100 --> 00:02:04,120
