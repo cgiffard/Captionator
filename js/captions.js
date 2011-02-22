@@ -27,6 +27,7 @@ var captionator = {
 	"captionify": function(element,defaultLanguage,options) {
 		"use strict";
 		var videoElements = [], elementIndex = 0;
+		options = options instanceof Object? options : {};
 		
 		if (!element || element === false || element === undefined || element === null) {
 			videoElements = [].slice.call(document.getElementsByTagName("video"),0); // select and convert to array
@@ -69,8 +70,7 @@ var captionator = {
 		Second parameter: BCP-47 string for default language. If this parameter is omitted, the User Agent's language
 		will be used to choose a track.
 		
-		Third parameter: as yet unused - will implement animation settings and some other global options with this
-		parameter later.
+		Third parameter: as yet unused - will implement greater control over generated transcripts later.
 		
 		
 		RETURNS:
@@ -83,6 +83,7 @@ var captionator = {
 	"generateTranscript": function(videoElement,transcriptDestination,defaultLanguage,options) {
 		"use strict";
 		var globalLanguage = defaultLanguage || navigator.language.split("-")[0];
+		options = options instanceof Object? options : {};
 		
 		if (typeof(videoElement) == "string") {
 			videoElement = document.querySelectorAll(videoElement)[0]; // if there's more than one element, return first
@@ -171,6 +172,16 @@ var captionator = {
 							var captionData = eventData.srcElement.trackList[currentTrack].captionData;
 							var subtitlesToDisplay = [], subtitleText;
 							var subtitleIndex;
+							var captionContainer = null;
+							
+							if (typeof(captionContainer) == "string") {
+								captionContainer = document.querySelectorAll(captionContainer)[0];
+							}
+
+							if (typeof(captionContainer) != "object") {
+								captionContainer = document.createElement("div");
+								captionContainer.id = "captions";
+							}
 							
 							if (captionData.length) {
 								for (subtitleIndex = 0; subtitleIndex < captionData.length; subtitleIndex ++) {
@@ -182,6 +193,7 @@ var captionator = {
 								
 								subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
 								if (!subtitlesToDisplay.length) {
+									
 									if (document.getElementById("captions").innerHTML.length) {
 										document.getElementById("captions").innerHTML = "";
 									}
