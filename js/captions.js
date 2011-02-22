@@ -29,6 +29,15 @@ var captionator = {
 		var videoElements = [], elementIndex = 0;
 		options = options instanceof Object? options : {};
 		
+		if (!HTMLVideoElement) {
+			// Browser doesn't support HTML5 - die here.
+			return false;
+		} else {
+			if (typeof(document.createElement("video").addtrack) == "function") {
+				return false;
+			}
+		}
+		
 		if (!element || element === false || element === undefined || element === null) {
 			videoElements = [].slice.call(document.getElementsByTagName("video"),0); // select and convert to array
 		} else {
@@ -177,7 +186,7 @@ var captionator = {
 							if (options.container) {
 								captionContainer = options.container;
 							} else {
-								captionContainer = "#captions"
+								captionContainer = "#captions";
 							}
 							
 							if (typeof(captionContainer) == "string") {
@@ -197,7 +206,7 @@ var captionator = {
 								captionContainer.style.height = Math.floor(parseInt(videoComputedStyle.getPropertyValue("height"),10)*0.15) + "px";
 								captionContainer.style.backgroundColor = "rgba(0,0,0,0.5)";
 								captionContainer.style.left = eventData.srcElement.offsetLeft + "px";
-								captionContainer.style.top = ((eventData.srcElement.offsetTop + parseInt(videoComputedStyle.getPropertyValue("height"),10)) - (parseInt(captionContainer.style.height) + videoControlHeight)) + "px";
+								captionContainer.style.top = ((eventData.srcElement.offsetTop + parseInt(videoComputedStyle.getPropertyValue("height"),10)) - (parseInt(captionContainer.style.height,10) + videoControlHeight)) + "px";
 							}
 							
 							if (captionData.length) {
@@ -226,8 +235,6 @@ var captionator = {
 					});
 				}
 			});
-		} else {
-			console.log("This video object is already captioned!");
 		}
 		
 		return videoElement;
@@ -235,9 +242,9 @@ var captionator = {
 	/*
 		captionator.parseCaptions(string captionData)
 		
-		Accepts and parses SRT caption/subtitle data. Will extend for WebSRT shortly. Perhaps non-JSON WebSRT will work already?
+		Accepts and parses SRT caption/subtitle data. Will extend for WebVTT shortly. Perhaps non-JSON WebVTT will work already?
 		
-		First parameter: Entire text data (UTF-8) of the retrieved SRT/WebSRT file. This parameter is mandatory.
+		First parameter: Entire text data (UTF-8) of the retrieved SRT/WebVTT file. This parameter is mandatory.
 		
 		RETURNS:
 		
@@ -304,9 +311,9 @@ var captionator = {
 	/* 
 		captionator.fetchCaptions(string captionURI, function callback)
 		
-		Gets and parses valid SRT/WebSRT files.
+		Gets and parses valid SRT/WebVTT files.
 		
-		First parameter: String URL to valid SRT/WebSRT file.
+		First parameter: String URL to valid SRT/WebVTT file.
 		
 		Second parameter: Callback function which accepts parsed subtitles as its first argument.
 		
@@ -325,7 +332,7 @@ var captionator = {
 						callback(captionData);
 					}
 				} else {
-					console.log("Error loading captions\n");
+					// console.log("Error loading captions\n");
 				}
 			}
 		};
