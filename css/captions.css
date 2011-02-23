@@ -1,16 +1,7 @@
-.captionator-title {
-	font-size: 16pt;
-	font-family: Helvetica, Arial, sans-serif;
-	color: white;
-	text-shadow: black 0px 0px 5px;
-	font-weight: bold;
-	width: 984px;
-	padding-left: 20px;
-	padding-right: 20px;
-	text-align: center;
-	display: block;
-	line-height: 32px;
-}
+/*
+	This file is designed to show how CSS can be used to style elements in the captions themselves.
+	You don't have to include it in your own project.
+*/
 
 .arduino {
 	color: red;
