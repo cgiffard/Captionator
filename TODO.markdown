@@ -1,7 +1,7 @@
 TODO
 ----
 
-* Add support for `aria-describedby`
+* Add support for `aria-describedby` (kinda done.)
 * Test with proper WebVTT files & confirm support for them
 * Add timestamps to generated transcript
 * Formalise and document options argument
@@ -12,5 +12,5 @@ TODO
 
 **Big Stuff**
 
-* Include compatibility with the in-development JS Multitrack API described by [http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI][this W3C Document].
+* Include compatibility with the in-development JS Multitrack API described by [this W3C Document](http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI).
 * Implement animation options
