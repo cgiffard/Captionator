@@ -2,6 +2,9 @@ TODO
 ----
 
 * Add support for `aria-describedby` (kinda done.)
+* Fix language parsing
+* Where UA language doesn't match first, use the language of the document
+* Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)
 * Test with proper WebVTT files & confirm support for them
 * Add timestamps to generated transcript
 * Formalise and document options argument
@@ -14,3 +17,7 @@ TODO
 
 * Include compatibility with the in-development JS Multitrack API described by [this W3C Document](http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI).
 * Implement animation options
+
+**Bugs**
+
+* Something's up in firefox: [Firefox error 'setting a property that only has a getter' when calling Array.prototype.slice](http://stackoverflow.com/questions/5087755/firefox-error-setting-a-property-that-only-has-a-getter-when-calling-array-prot)

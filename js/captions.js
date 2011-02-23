@@ -404,8 +404,8 @@ var captionator = {
 							.replace(/\r/g,"\n")
 							.split(/\n\n/g)
 							.filter(function(lineGroup) {
-								if (lineGroup.match(/WEBVVT FILE/ig)) {
-									// This is useless - we just don't care as we'll be treating them the same anyway.
+								if (lineGroup.match(/WEBVTT FILE/ig)) {
+									// This is useless - we just don't care as we'll be treating SRT and WebVTT the same anyway.
 									return false;
 								} else {
 									return true;

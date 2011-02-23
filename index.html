@@ -7,8 +7,10 @@
 	</head>
 	<body>
 		<h1>HTML5 Video Closed Captioning Example</h1>
-		<video controls data-captions id="videoTest">
-			<source src="video/arduino.m4v" type="video/mp4" width="1024" height="464"/>
+		<video controls data-captions autobuffer id="videoTest" width="1024" height="464">
+			<source src="video/arduino.m4v" type="video/mp4" />
+			<source src="video/arduino.webm" type="video/webm" />
+			<source src="video/arduino.ogv" type="video/ogg" />
 			<track kind="captions" src="video/arduino-en.srt" srclang="en" label="English Subtitles" />
 			<track kind="captions" src="video/arduino-de.srt" srclang="de" label="German Subtitles" />
 			<track kind="captions" src="video/arduino-ja.srt" srclang="ja" label="Japanese Subtitles" />
@@ -21,7 +23,7 @@
 			window.addEventListener("load",function(eventData) {
 				captionator.captionify();
 				captionator.generateTranscript("#videoTest","#transcript");
-			});
+			},false);
 		</script>
 	</body>
 </html>
