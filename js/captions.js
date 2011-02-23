@@ -105,7 +105,7 @@ var captionator = {
 		}
 		
 		if (videoElement.constructor == HTMLVideoElement && typeof(transcriptDestination) == "object") {
-			var trackSource = [].splice.call(videoElement.querySelectorAll("track"),0)
+			var trackSource = [].slice.call(videoElement.querySelectorAll("track"),0)
 								.filter(function(trackElement) {
 									return trackElement.getAttribute("srclang").split("-")[0] == globalLanguage ? true : false;
 								})[0]
@@ -152,7 +152,7 @@ var captionator = {
 			videoElement.captioned = true;
 			
 			// Get tracks for video element
-			trackList = [].splice.call(videoElement.querySelectorAll("track"),0)
+			trackList = [].slice.call(videoElement.querySelectorAll("track"),0)
 						.map(function(trackElement) {
 							return {
 								"label":		trackElement.getAttribute("label"),
@@ -177,10 +177,10 @@ var captionator = {
 					});
 					
 					videoElement.addEventListener("timeupdate", function(eventData){
-						if (eventData.srcElement.subtitlesReady) {
-							var currentTime = eventData.srcElement.currentTime;
-							var currentTrack = eventData.srcElement.currentSubtitleTrack;
-							var captionData = eventData.srcElement.trackList[currentTrack].captionData;
+						if (eventData.target.subtitlesReady) {
+							var currentTime = eventData.target.currentTime;
+							var currentTrack = eventData.target.currentSubtitleTrack;
+							var captionData = eventData.target.trackList[currentTrack].captionData;
 							var subtitlesToDisplay = [], subtitleText;
 							var subtitleIndex;
 							var captionContainer = null;
@@ -198,9 +198,9 @@ var captionator = {
 							if (typeof(captionContainer) != "object") {
 								captionContainer = document.createElement("div");
 								captionContainer.id = "captions";
-								eventData.srcElement.parentNode.appendChild(captionContainer);
-								eventData.srcElement.setAttribute("aria-describedby","captions");
-								captionator.styleContainer(captionContainer, eventData.srcElement.trackList[currentTrack].kind, eventData.srcElement, false);
+								eventData.target.parentNode.appendChild(captionContainer);
+								eventData.target.setAttribute("aria-describedby","captions");
+								captionator.styleContainer(captionContainer, eventData.target.trackList[currentTrack].kind, eventData.target, false);
 							}
 							
 							if (captionData.length) {
@@ -226,7 +226,7 @@ var captionator = {
 								}
 							}
 						}
-					});
+					},false);
 				}
 			});
 		}
