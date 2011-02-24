@@ -105,6 +105,17 @@ Each track defines the following user accessible properties:
 Ergo, to access the property `language` from the third track, you'd use the following code:
 
 	var thirdTrackLanguage = myVideo.tracks[2].language;
+	
+To enable or disable a track:
+
+	myVideo.tracks[2].enabled = true;
+	myVideo.tracks[2].enabled = false;
+
+The track is then enabled/disabled when the video throws a `timeupdate` event. You can update it immediately like so:
+
+	captionator.rebuildCaptions(myVideo);
+
+(Where `myVideo` is an instance of a captioned HTMLVideoElement)
 
 For a more advanced example, see the subtitle selector in the example file.
 
