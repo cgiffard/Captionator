@@ -18,6 +18,7 @@ TODO
 * Include compatibility with the in-development JS Multitrack API described by [this W3C Document](http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI).
 * Implement animation options
 * Support audio and video tracks too (!!!)
+* Include QUnit test framework & tests file
 
 **Bugs**
 
