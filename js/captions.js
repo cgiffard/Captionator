@@ -151,100 +151,147 @@ var captionator = {
 			videoElement.className += (videoElement.className.length ? " " : "") + "captioned";
 			videoElement.captioned = true;
 			
+			// Check whether video element has an ID. If not, create one
+			if (videoElement.id.length === 0) {
+				var idComposite = "";
+				while (idComposite.length < 10) {
+					idComposite += String.fromCharCode(65 + Math.floor(Math.random()*26));
+				}
+				
+				videoElement.id = "captionator" + idComposite;
+			}
+			
 			// Get tracks for video element
+			// This section duplicates some properties to maintain compatibility with the W3 draft spec
+			// http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI
 			trackList = [].slice.call(videoElement.querySelectorAll("track"),0)
 						.map(function(trackElement) {
 							return {
 								"label":		trackElement.getAttribute("label"),
+								"name":			trackElement.getAttribute("label"),
 								"src":			trackElement.getAttribute("src"),
+								"type":			(trackElement.getAttribute("type")||"unknown"),
 								"language":		trackElement.getAttribute("srclang").split("-")[0],
 								"kind":			(trackElement.getAttribute("kind")||trackElement.getAttribute("role")),
-								"defaultTitle":	(trackElement.getAttribute("srclang").split("-")[0] == globalLanguage ? true : false),
-								"enabled":		(trackElement.getAttribute("enabled") === "true" ? true : false),
+								"role":			(trackElement.getAttribute("kind")||trackElement.getAttribute("role")),
+								"enabled":		(trackElement.getAttribute("enabled") === "true" ||
+												trackElement.getAttribute("srclang").split("-")[0] == globalLanguage ? true : false),
 								"videoElement":	videoElement
 							};
 						});
 			
-			videoElement.trackList = trackList;
+			videoElement.tracks = trackList;
 			videoElement.subtitlesReady = false;
+			videoElement.captionatorOptions = options;
 			
 			trackList.forEach(function(trackElement,trackIndex) {
-				if (trackElement.defaultTitle || trackElement.enabled) {
+				if (trackElement.enabled === true) {
 					captionator.fetchCaptions(trackElement.src, function(captionData) {
 						trackElement.captionData = captionData;
 						trackElement.subtitlesReady = true;
+						trackElement.enabled = true;
 					});
 				}
 			});
 			
 			videoElement.addEventListener("timeupdate", function(eventData){
 				var videoElement = eventData.target;
-				var trackList = videoElement.trackList;
-				var currentTime = videoElement.currentTime;
-				
-				trackList.forEach(function(trackElement,currentTrack) {
-					if (trackElement.subtitlesReady) {
-						var captionData = videoElement.trackList[currentTrack].captionData;
-						var subtitlesToDisplay = [], subtitleText;
-						var subtitleIndex;
-						var captionContainer = null;
-						var containerID = "captions-" + trackList[currentTrack].kind + "-" + trackList[currentTrack].language + currentTrack;
-						
-						if (options.container && !trackList[currentTrack].autogen) {
-							if (options.container instanceof Array) {
-								if (options.container.length > currentTrack && options.container[currentTrack]) {
-									captionContainer = options.container[currentTrack];
-								}
-							} else {
-								captionContainer = options.container;
-							}
-						} else {
-							captionContainer = "#" + containerID;
-						}
-					
-						if (typeof(captionContainer) === "string") {
-							captionContainer = document.querySelectorAll(captionContainer)[0];
-						}
-
-						if (typeof(captionContainer) !== "object" || captionContainer === null || captionContainer === undefined) {
-							captionContainer = document.createElement("div");
-							captionContainer.id = containerID;
-							videoElement.parentNode.appendChild(captionContainer);
-							videoElement.setAttribute("aria-describedby","captions");
-							captionator.styleContainer(captionContainer, trackList[currentTrack].kind, eventData.target, false);
-							captionContainer.style.display = "none";
-							trackList[currentTrack].autogen = true;
-						}
-					
-						if (captionData.length) {
-							for (subtitleIndex = 0; subtitleIndex < captionData.length; subtitleIndex ++) {
-								if (currentTime >= captionData[subtitleIndex].timeIn &&
-									currentTime <= captionData[subtitleIndex].timeOut) {
-									subtitlesToDisplay.push(captionData[subtitleIndex].html);
-								}
-							}
-						
-							subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
-							if (!subtitlesToDisplay.length) {
-							
-								if (captionContainer.innerHTML.length) {
-									captionContainer.innerHTML = "";
-									captionContainer.style.display = "none";
-								}
-							} else {
-								if (captionContainer.oldCaptions !== subtitleText) {
-									captionContainer.oldCaptions = subtitleText;
-									captionContainer.innerHTML = subtitleText;
-									captionContainer.style.display = "block";
-								}
-							}
-						}
-					}
-				});
+				captionator.rebuildCaptions(videoElement);
 			}, false);
 		}
 		
 		return videoElement;
+	},
+	
+	
+	"rebuildCaptions": function(videoElement,options) {
+		var trackList = videoElement.tracks;
+		var currentTime = videoElement.currentTime;
+		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
+		
+		trackList.forEach(function(trackElement,currentTrack) {
+			var captionData = trackList[currentTrack].captionData;
+			var subtitlesToDisplay = [], subtitleText;
+			var subtitleIndex;
+			var captionContainer = null;
+			var containerID = "captionator-" + videoElement.id + "-" + trackList[currentTrack].kind + "-" + trackList[currentTrack].language + currentTrack;
+			
+			if (trackElement.subtitlesReady && trackElement.enabled) {
+				if (options.container && !trackList[currentTrack].autogen) {
+					if (options.container instanceof Array) {
+						if (options.container.length > currentTrack && options.container[currentTrack]) {
+							captionContainer = options.container[currentTrack];
+						}
+					} else {
+						captionContainer = options.container;
+					}
+				} else {
+					captionContainer = "#" + containerID;
+				}
+				
+				if (typeof(captionContainer) === "string") {
+					captionContainer = document.querySelectorAll(captionContainer)[0];
+				}
+				
+				if (typeof(captionContainer) !== "object" || captionContainer === null || captionContainer === undefined) {
+					captionContainer = document.createElement("div");
+					captionContainer.id = containerID;
+					videoElement.parentNode.appendChild(captionContainer);
+					captionator.styleContainer(captionContainer, trackList[currentTrack].kind, videoElement, false);
+					captionContainer.style.display = "none";
+					trackList[currentTrack].autogen = true;
+				}
+				
+				if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
+					var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
+					videoElement.setAttribute("aria-describedby",existingValue + containerID);
+				}
+			
+				if (captionData.length) {
+					for (subtitleIndex = 0; subtitleIndex < captionData.length; subtitleIndex ++) {
+						if (currentTime >= captionData[subtitleIndex].timeIn &&
+							currentTime <= captionData[subtitleIndex].timeOut) {
+							subtitlesToDisplay.push(captionData[subtitleIndex].html);
+						}
+					}
+				
+					subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
+					if (!subtitlesToDisplay.length) {
+					
+						if (captionContainer.innerHTML.length) {
+							captionContainer.innerHTML = "";
+							captionContainer.style.display = "none";
+						}
+					} else {
+						if (captionContainer.oldCaptions !== subtitleText) {
+							captionContainer.oldCaptions = subtitleText;
+							captionContainer.innerHTML = subtitleText;
+							captionContainer.style.display = "block";
+						}
+					}
+				}
+			} else {
+				if (trackElement.enabled) {
+					captionator.fetchCaptions(trackElement.src, function(captionData) {
+						trackElement.captionData = captionData;
+						trackElement.subtitlesReady = true;
+						trackElement.enabled = true;
+					});
+				} else {
+					if (trackElement.autogen) {
+						// The track element has been generated byt is now disabled... clean up the remains
+						// (We only remove/mutate auto-generated elements)
+						var oldCaptionContainer = document.getElementById(containerID);
+						if (oldCaptionContainer) {
+							oldCaptionContainer.parentNode.removeChild(oldCaptionContainer);
+						}
+						
+						// Store that the element has no longer been generated...
+						trackElement.autogen = false;
+					}
+				}
+			}
+		});
 	},
 	/*
 		captionator.styleContainer(DOMNode, kind / role, videoElement, [boolean applyClassesOnly])
@@ -380,6 +427,10 @@ var captionator = {
 				case "tickertext":
 					// Stock ticker style, smaller than regular subtitles to fit more in.
 				
+				break;
+				case "toolbar":
+					// Non-standard extension for multi-track media selection toolbars
+					
 				break;
 				default:
 					// Whoah, we didn't prepare for this one. Just class it with the requested name and move on.

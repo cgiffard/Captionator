@@ -7,22 +7,52 @@
 	</head>
 	<body>
 		<h1>HTML5 Video Closed Captioning Example</h1>
+		<p><em><strong>Note:</strong> the German and Japanese subtitles are machine translated.</em></p>
 		<video controls data-captions autobuffer id="videoTest" width="1024" height="464">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
-			<track kind="captions" src="video/arduino-en.srt" srclang="en" label="English Subtitles" />
-			<track kind="captions" src="video/arduino-de.srt" srclang="de" label="German Subtitles" />
-			<track kind="captions" src="video/arduino-ja.srt" srclang="ja" label="Japanese Subtitles" />
-			<track kind="lyrics" src="video/arduino-ja.srt" srclang="ja" label="Lyrics" />
+			<track kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" />
+			<track kind="captions" src="video/arduino-de.srt" type="text/srt" srclang="de" label="German Subtitles" />
+			<track kind="captions" src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Japanese Subtitles" />
+			<track kind="lyrics"   src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Lyrics" />
 		</video>
+		<h2>Media Controls</h2>
+		<div id="controls"></div>
 		<h2>Transcript</h2>
 		<div id="transcript"></div>
 		<script type="text/javascript" src="js/captions.js"></script>
+		<!-- 
+			The following code enables you to initialise Captionator:
+		-->
 		<script type="text/javascript">
 			window.addEventListener("load",function(eventData) {
 				captionator.captionify();
 				captionator.generateTranscript("#videoTest","#transcript");
+			},false);
+		</script>
+		<!--
+			The following script is not part of Captionator, but demonstrates how you can use the API to enable and disable
+			caption tracks.
+		-->
+		<script type="text/javascript">
+			window.addEventListener("load",function(eventData) {
+				var subtitleSelector = document.createElement("select");
+				document.getElementById("controls").appendChild(subtitleSelector);
+				
+				subtitleSelector.addEventListener("change",function(eventData) {
+					trackToEnable = parseInt(eventData.target.value,10);
+					document.getElementById("videoTest").tracks.forEach(function(track,index) {
+						track.enabled = index === trackToEnable ? true : false;
+					});
+				});
+				
+				document.getElementById("videoTest").tracks.forEach(function(track,index) {
+					var subtitleOption = document.createElement("option");
+					subtitleOption.innerHTML = track.label + " (" + track.language + ")";
+					subtitleOption.setAttribute("value",index);
+					subtitleSelector.appendChild(subtitleOption);
+				});
 			},false);
 		</script>
 	</body>

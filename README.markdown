@@ -75,6 +75,44 @@ the 3rd element matches the fourth track etc.)
 Null or empty elements trigger automatically generated containers - so in the example above, the German and Japanese subtitle
 tracks (when enabled) would have automatically generated containers.
 
-**Enabling and disabling subtitle tracks programatically**
+### Enabling and disabling subtitle tracks programatically ###
 
-Documentation soon!
+You can find a demonstration of this feature in the example file.
+
+** Getting Tracks **
+
+Captionator simply makes a new property (array) available through javascript on the HTMLVideoElement:
+
+	var myVideo = document.getElementsById("myVideo");
+	var myTracks = myVideo.tracks;
+	
+By extension, getting access to the track you want is as simple as:
+
+	var firstSubtitleTrack = myVideo.tracks[0];
+	
+Each track defines the following user accessible properties:
+
+* `label` - String - describes the track (in plain human language)
+* `name` - same as above (for W3 spec compatibility)
+* `src` - URI for the resource
+* `type` - MIME Content type for the resource (e.g. text/srt)
+* `language` - BCP47 language string which describes the track
+* `kind` - Resource type (e.g. `subtitle`, `caption`, `lyrics`, `karaoke`, `alternate`, `chapters`, etc. See full list [here](http://www.w3.org/WAI/PF/HTML/wiki/Media_Multiple_Text_Tracks_API#Available_Roles))
+* `role` - as above - maintained for W3 spec compatibility
+* `enabled` - the most important property (probably!) - determines whether captionator will fetch and render the resource.
+* `videoElement` - the HTMLVideoElement which the track relates to/extends
+
+Ergo, to access the property `language` from the third track, you'd use the following code:
+
+	var thirdTrackLanguage = myVideo.tracks[2].language;
+
+For a more advanced example, see the subtitle selector in the example file.
+
+New Features
+---------------
+
+* Support for `aria-describedby`
+* Implements the W3 draft Multitrack Media API proposal: http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI
+* Through the spec, supports dynamic subtitle toggling (as demonstrated in the example file)
+* Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
+* Adaptively scales default subtitle UI to fit video
