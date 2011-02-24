@@ -285,6 +285,7 @@ var captionator = {
 						trackElement.captionData = captionData;
 						trackElement.subtitlesReady = true;
 						trackElement.enabled = true;
+						captionator.rebuildCaptions(videoElement);
 					});
 				} else {
 					if (trackElement.autogen) {

@@ -45,6 +45,10 @@
 					document.getElementById("videoTest").tracks.forEach(function(track,index) {
 						track.enabled = index === trackToEnable ? true : false;
 					});
+					
+					// Will be superceded once I write some getters/setters into the track object
+					// and do a little more abstraction
+					captionator.rebuildCaptions(document.getElementById("videoTest"));
 				});
 				
 				document.getElementById("videoTest").tracks.forEach(function(track,index) {

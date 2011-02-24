@@ -24,3 +24,4 @@ TODO
 
 * **FIXED** Something's up in firefox: [Firefox error 'setting a property that only has a getter' when calling Array.prototype.slice](http://stackoverflow.com/questions/5087755/firefox-error-setting-a-property-that-only-has-a-getter-when-calling-array-prot)
 * **FIXED** Script inefficiently reapplies subtitle data with every event call (not by design)
+* **FIXED** A bug where captions (which had not yet been downloaded and parsed) were not being rebuilt when the video was paused

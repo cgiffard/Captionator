@@ -6,7 +6,7 @@ Captionator
 This basic polyfill aims to add support for the HTML5 video `<track>` element.
 
 It currently includes rudimentary support for multiple language subtitle tracks,
-auto-selected based on the user-agent language.
+auto-selected based on the user-agent language and implements the draft track API.
 
 It is designed to be js-library independent (but I might port it to jQuery later,
 as the raw DOM is chunky indeed.) It currently works in browsers which offer support
@@ -111,7 +111,7 @@ To enable or disable a track:
 	myVideo.tracks[2].enabled = true;
 	myVideo.tracks[2].enabled = false;
 
-The track is then enabled/disabled when the video throws a `timeupdate` event. You can update it immediately like so:
+The track is then enabled/disabled when the video fires a `timeupdate` event. You can update it immediately like so:
 
 	captionator.rebuildCaptions(myVideo);
 
