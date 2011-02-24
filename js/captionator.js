@@ -1,3 +1,11 @@
+/* 
+	Captionator 0.1
+	Christopher Giffard, 2011
+	Share and enjoy
+
+	https://github.com/cgiffard/Captionator
+*/
+
 var captionator = {
 	/*
 		captionator.captionify([selector string array | DOMElement array | selector string | singular dom element ],
@@ -204,7 +212,8 @@ var captionator = {
 	},
 	
 	
-	"rebuildCaptions": function(videoElement,options) {
+	"rebuildCaptions": function(videoElement) {
+		"use strict";
 		var trackList = videoElement.tracks;
 		var currentTime = videoElement.currentTime;
 		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
