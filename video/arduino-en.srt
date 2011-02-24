@@ -28,7 +28,7 @@ For me, that's about giving people the information they need to recreate the pie
 
 8
 00:01:02,000 --> 00:01:08,000
-I'm really passionate about <span class'arduino'>arduino</span>... because I really care about understanding more about how the world works.
+I'm really passionate about <span class='arduino'>arduino</span>... because I really care about understanding more about how the world works.
 
 9
 00:01:08,700 --> 00:01:14,463

@@ -157,78 +157,91 @@ var captionator = {
 							return {
 								"label":		trackElement.getAttribute("label"),
 								"src":			trackElement.getAttribute("src"),
-								"lang":			trackElement.getAttribute("srclang").split("-")[0],
+								"language":		trackElement.getAttribute("srclang").split("-")[0],
 								"kind":			(trackElement.getAttribute("kind")||trackElement.getAttribute("role")),
 								"defaultTitle":	(trackElement.getAttribute("srclang").split("-")[0] == globalLanguage ? true : false),
+								"enabled":		(trackElement.getAttribute("enabled") === "true" ? true : false),
 								"videoElement":	videoElement
 							};
 						});
 			
 			videoElement.trackList = trackList;
 			videoElement.subtitlesReady = false;
-			videoElement.currentSubtitleTrack = 0;
 			
 			trackList.forEach(function(trackElement,trackIndex) {
-				if (trackElement.defaultTitle) {
+				if (trackElement.defaultTitle || trackElement.enabled) {
 					captionator.fetchCaptions(trackElement.src, function(captionData) {
 						trackElement.captionData = captionData;
-						trackElement.videoElement.subtitlesReady = true;
-						trackElement.videoElement.currentSubtitleTrack = trackIndex;
+						trackElement.subtitlesReady = true;
 					});
-					
-					videoElement.addEventListener("timeupdate", function(eventData){
-						if (eventData.target.subtitlesReady) {
-							var currentTime = eventData.target.currentTime;
-							var currentTrack = eventData.target.currentSubtitleTrack;
-							var captionData = eventData.target.trackList[currentTrack].captionData;
-							var subtitlesToDisplay = [], subtitleText;
-							var subtitleIndex;
-							var captionContainer = null;
-							
-							if (options.container) {
-								captionContainer = options.container;
-							} else {
-								captionContainer = "#captions";
-							}
-							
-							if (typeof(captionContainer) == "string") {
-								captionContainer = document.querySelectorAll(captionContainer)[0];
-							}
-
-							if (typeof(captionContainer) != "object") {
-								captionContainer = document.createElement("div");
-								captionContainer.id = "captions";
-								eventData.target.parentNode.appendChild(captionContainer);
-								eventData.target.setAttribute("aria-describedby","captions");
-								captionator.styleContainer(captionContainer, eventData.target.trackList[currentTrack].kind, eventData.target, false);
-							}
-							
-							if (captionData.length) {
-								for (subtitleIndex = 0; subtitleIndex < captionData.length; subtitleIndex ++) {
-									if (currentTime >= captionData[subtitleIndex].timeIn &&
-										currentTime <= captionData[subtitleIndex].timeOut) {
-										subtitlesToDisplay.push(captionData[subtitleIndex].html);
-									}
+				}
+			});
+			
+			videoElement.addEventListener("timeupdate", function(eventData){
+				var videoElement = eventData.target;
+				var trackList = videoElement.trackList;
+				var currentTime = videoElement.currentTime;
+				
+				trackList.forEach(function(trackElement,currentTrack) {
+					if (trackElement.subtitlesReady) {
+						var captionData = videoElement.trackList[currentTrack].captionData;
+						var subtitlesToDisplay = [], subtitleText;
+						var subtitleIndex;
+						var captionContainer = null;
+						var containerID = "captions-" + trackList[currentTrack].kind + "-" + trackList[currentTrack].language + currentTrack;
+						
+						if (options.container && !trackList[currentTrack].autogen) {
+							if (options.container instanceof Array) {
+								if (options.container.length > currentTrack && options.container[currentTrack]) {
+									captionContainer = options.container[currentTrack];
 								}
-								
-								subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
-								if (!subtitlesToDisplay.length) {
-									
-									if (captionContainer.innerHTML.length) {
-										captionContainer.innerHTML = "";
-										captionContainer.style.display = "none";
-									}
-								} else {
-									if (captionContainer.innerHTML != subtitleText) {
-										captionContainer.innerHTML = subtitleText;
-										captionContainer.style.display = "block";
-									}
+							} else {
+								captionContainer = options.container;
+							}
+						} else {
+							captionContainer = "#" + containerID;
+						}
+					
+						if (typeof(captionContainer) === "string") {
+							captionContainer = document.querySelectorAll(captionContainer)[0];
+						}
+
+						if (typeof(captionContainer) !== "object" || captionContainer === null || captionContainer === undefined) {
+							captionContainer = document.createElement("div");
+							captionContainer.id = containerID;
+							videoElement.parentNode.appendChild(captionContainer);
+							videoElement.setAttribute("aria-describedby","captions");
+							captionator.styleContainer(captionContainer, trackList[currentTrack].kind, eventData.target, false);
+							captionContainer.style.display = "none";
+							trackList[currentTrack].autogen = true;
+						}
+					
+						if (captionData.length) {
+							for (subtitleIndex = 0; subtitleIndex < captionData.length; subtitleIndex ++) {
+								if (currentTime >= captionData[subtitleIndex].timeIn &&
+									currentTime <= captionData[subtitleIndex].timeOut) {
+									subtitlesToDisplay.push(captionData[subtitleIndex].html);
+								}
+							}
+						
+							subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
+							if (!subtitlesToDisplay.length) {
+							
+								if (captionContainer.innerHTML.length) {
+									captionContainer.innerHTML = "";
+									captionContainer.style.display = "none";
+								}
+							} else {
+								if (captionContainer.oldCaptions !== subtitleText) {
+									captionContainer.oldCaptions = subtitleText;
+									captionContainer.innerHTML = subtitleText;
+									captionContainer.style.display = "block";
 								}
 							}
 						}
-					},false);
-				}
-			});
+					}
+				});
+			}, false);
 		}
 		
 		return videoElement;
