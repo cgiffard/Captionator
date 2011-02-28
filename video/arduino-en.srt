@@ -1,5 +1,5 @@
 1
-00:00:13,000 --> 00:00:016,100
+00:00:13,000 --> 00:00:16,100 D:vertical L:90% T:50% S:140%
 I heard about this <span class='arduino'>arduino</span> project, and I saw it online - 
 
 2

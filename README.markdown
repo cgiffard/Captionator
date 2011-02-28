@@ -77,9 +77,11 @@ tracks (when enabled) would have automatically generated containers.
 
 ### Enabling and disabling subtitle tracks programatically ###
 
+**IMPORTANT: SUBJECT TO CHANGE - switching from W3 spec to [WHATWG spec](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html#timed-text-tracks)**
+
 You can find a demonstration of this feature in the example file.
 
-** Getting Tracks **
+**Getting Tracks**
 
 Captionator simply makes a new property (array) available through javascript on the HTMLVideoElement:
 
