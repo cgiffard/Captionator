@@ -121,6 +121,15 @@ The track is then enabled/disabled when the video fires a `timeupdate` event. Yo
 
 For a more advanced example, see the subtitle selector in the example file.
 
+### Options ###
+
+The following lists options which you can pass to captionator:
+
+* `enableCaptionsByDefault` (Boolean) - determines whether to show captions by default, if a caption language matches the user's UA language or is selected for display according to the rules outlined in the [WHATWG specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html). Tracks with the `enabled` attribute set to `true` will be displayed regardless of this option.
+* `container`(Array | String | DOMObject) - defines either a single element or a list of elements which captionator will append the captions to instead of automatically generating its own elements.
+* `exportObjects` (Boolean) - instructs Captionator to export its own implementation of the TimedTextTrack objects (TextTrack, TextTrackCue, etc.) into the global scope. Captionator ordinarily keeps these within its own object. You might find this useful for creating code which utilises `instanceof` conditionals, or creates instances of these objects itself, which you want to be native-TextTrack-support-agnostic. (Phew, what a mouthful.)
+
+
 New Features
 ---------------
 

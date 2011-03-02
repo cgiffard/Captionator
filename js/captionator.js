@@ -8,6 +8,22 @@
 
 var captionator = {
 	/*
+		Subclassing DOMException so we can reliably throw it without browser intervention. This is quite hacky. See SO post:
+		http://stackoverflow.com/questions/5136727/manually-artificially-throwing-a-domexception-with-javascript
+	*/
+	"createDOMException": function(code,message,name) {
+		"use strict";
+		try {
+			// Deliberately cause a DOMException error
+	        document.querySelectorAll("div/[]");
+	    } catch(Error) {
+			// Catch it and subclass it
+			var CustomDOMException = function(code,message,name){ this.code = code; this.message = message; this.name = name; };
+			CustomDOMException.prototype = Error;
+	        return new CustomDOMException(code,message,name);
+	    }
+	},
+	/*
 		captionator.captionify([selector string array | DOMElement array | selector string | singular dom element ],
 								[defaultLanguage - string in BCP47],
 								[options - JS Object])
@@ -37,30 +53,343 @@ var captionator = {
 		var videoElements = [], elementIndex = 0;
 		options = options instanceof Object? options : {};
 		
+		/* Feature detection block */
 		if (!HTMLVideoElement) {
-			// Browser doesn't support HTML5 - die here.
+			// Browser doesn't support HTML5 video - die here.
 			return false;
 		} else {
 			// Browser supports native track API
-			if (typeof(document.createElement("video").addtrack) == "function") {
+			if (typeof(document.createElement("video").addTrack) === "function") {
 				return false;
 			}
 		}
+		
+		// Set up objects & types
+		// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
+		
+		captionator.TextTrack = function TextTrack(kind,label,language,trackSource) {
+			const NONE = 0;
+			const LOADING = 1;
+			const LOADED = 2;
+			const ERROR = 3;
+			const OFF = 0;
+			const HIDDEN = 1;
+			const SHOWING = 2;
+			
+			this.onload = function () {};
+			this.onerror = function() {};
+			this.oncuechange = function() {};
+			
+			this.internalMode = OFF;
+			this.cues = new captionator.TextTrackCueList(this);
+			this.activeCues = new captionator.ActiveTextTrackCueList(this.cues);
+			this.kind = kind || "caption";
+			this.label = label || "";
+			this.language = language || navigator.language.split("-")[0];
+			this.src = trackSource || "";
+			this.readyState = NONE;
+			
+			// Create getters and setters for mode
+			this.getMode = function() {
+				return this.internalMode;
+			};
+			
+			this.setMode = function(value) {
+				var allowedModes = [OFF,HIDDEN,SHOWING];
+				if (allowedModes.indexOf(value) !== -1) {
+					this.internalMode = value;
+					
+					if (this.readyState === NONE && this.src.length > 0) {
+						this.loadTrack(this.src);
+					}
+				} else {
+					throw new Error("Illegal mode value for track.");
+				}
+			};
+			
+			if (Object.prototype.__defineGetter__) {
+				this.__defineGetter__("mode", this.getMode);
+				this.__defineSetter__("mode", this.setMode);
+			} else if (Object.defineProperty) {
+				Object.defineProperty(this,"mode",
+				   {get: this.getMode, set: this.setMode}
+				);
+			}
+			
+			this.loadTrack = function(source, callback) {
+				var captionData, ajaxObject = new XMLHttpRequest();
+				if (this.readyState === LOADED) {
+					if (callback instanceof Function) {
+						callback(captionData);
+					}
+				} else {
+					this.src = source;
+					this.readyState = LOADING;
+					
+					var currentTrackElement = this;
+					ajaxObject.open('GET', source, true);
+					ajaxObject.onreadystatechange = function (eventData) {
+						if (ajaxObject.readyState === 4) {
+							if(ajaxObject.status === 200) {
+								captionData = captionator.parseCaptions(ajaxObject.responseText);
+								currentTrackElement.readyState = LOADED;
+								currentTrackElement.cues.loadCues(captionData);
+								currentTrackElement.onload();
+								
+								if (callback instanceof Function) {
+									callback.call(currentTrackElement,captionData);
+								}
+							} else {
+								// Throw error handler, if defined
+								currentTrackElement.onerror();
+							}
+						}
+					};
+					ajaxObject.send(null);
+				}
+			};
+			
+			this.generateTranscript = function(destinationElement) {
+				var captionID, transcriptDestination, captionData;
+				
+				if (typeof(destinationElement) === "string") {
+					transcriptDestination = document.querySelectorAll(transcriptDestination)[0];
+				}
+				
+				if (typeof(transcriptDestination) === "object") {
+					if (this.readyState === LOADED) {
+						for (captionID = 0; captionID < captionData.length; captionID ++) {
+							transcriptDestination.innerHTML += "<p class='transcriptLine'>" + captionData[captionID].html + "</p>";
+						}
+					} else {
+						this.loadTrack(function() {
+							this.generateTranscript(destinationElement);
+						});
+					}
+				} else {
+					return false;
+				}
+			};
+			
+			// mutableTextTrack.addCue(cue)
+			// Adds the given cue to mutableTextTrack's text track list of cues.
+			// Raises an exception if the argument is null, associated with another text track, or already in the list of cues.
+			
+			this.addCue = function() {
+				this.activeCues.refreshCues();
+			};
+			
+			// mutableTextTrack.removeCue(cue)
+			// Removes the given cue from mutableTextTrack's text track list of cues.
+			// Raises an exception if the argument is null, associated with another text track, or not in the list of cues.
+			
+			this.removeCue = function() {
+				this.activeCues.refreshCues();
+			};
+		};
+		
+		// Define read-only properties
+		
+		captionator.TextTrackCueList = function TextTrackCueList(track) {
+			this.track = track instanceof captionator.TextTrack || null;
+			
+			this.getCueById = function(cueID) {
+				return this.filter(function(currentCue) {
+					return currentCue.id === cueID;
+				})[0];
+			};
+			
+			this.loadCues = function(cueData) {
+				for (var cueIndex = 0; cueIndex < cueData.length; cueIndex ++) {
+					cueData[cueIndex].track = this.track;
+					Array.prototype.push.call(this,cueData[cueIndex]);
+				}
+			};
+			
+			this.toString = function() {
+				return "[TextTrackCueList]";
+			};
+		};
+		captionator.TextTrackCueList.prototype = [];
+		
+		captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList) {
+			// Among active cues:
+			
+			// The text track cues of a media element's text tracks are ordered relative to each
+			// other in the text track cue order, which is determined as follows: first group the
+			// cues by their text track, with the groups being sorted in the same order as their
+			// text tracks appear in the media element's list of text tracks; then, within each
+			// group, cues must be sorted by their start time, earliest first; then, any cues with
+			// the same start time must be sorted by their end time, earliest first; and finally,
+			// any cues with identical end times must be sorted in the order they were created (so
+			// e.g. for cues from a WebVTT file, that would be the order in which the cues were
+			// listed in the file).
+			
+			this.refreshCues = function() {
+				this.length = 0;
+				textTrackCueList.forEach(function(cue) {
+					if (cue.active) {
+						this.push(cue);
+					}
+				});
+			};
+			
+			this.refreshCues();
+		};
+		captionator.ActiveTextTrackCueList.prototype = captionator.TextTrackCueList;
+		
+		captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
+			// Set up internal data store
+			this.id = id;
+			this.track = track instanceof captionator.TextTrack ? track : null;
+			this.startTime = parseFloat(startTime,10);
+			this.endTime = parseFloat(endTime,10);
+			this.text = typeof(text) === "string" ? text : "";
+			this.settings = typeof(settings) === "string" ? settings : "";
+			this.intSettings = {};
+			this.pauseOnExit = !!pauseOnExit;
+			this.track = track;
+			
+			// Parse settings & set up cue defaults
+			
+			// A writing direction, either horizontal (a line extends horizontally and is positioned vertically,
+			// with consecutive lines displayed below each other), vertical growing left (a line extends vertically
+			// and is positioned horizontally, with consecutive lines displayed to the left of each other), or
+			// vertical growing right (a line extends vertically and is positioned horizontally, with consecutive
+			// lines displayed to the right of each other).
+			this.direction = "horizontal";
+			
+			// A boolean indicating whether the line's position is a line position (positioned to a multiple of the
+			// line dimensions of the first line of the cue), or whether it is a percentage of the dimension of the video.
+			this.snapToLines = false;
+			
+			// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
+			// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
+			// position is to depend on the other active tracks.
+			this.linePosition = "auto";
+			
+			// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
+			// of the video, as defined by the writing direction.
+			this.textPosition = 0;
+			
+			// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
+			// be interpreted as a percentage of the video, as defined by the writing direction.
+			this.size = 0;
+			
+			// An alignment for the text of each line of the cue, either start alignment (the text is aligned towards its
+			// start side), middle alignment (the text is aligned centered between its start and end sides), end alignment
+			// (the text is aligned towards its end side). Which sides are the start and end sides depends on the
+			// Unicode bidirectional algorithm and the writing direction. [BIDI]
+			this.alignment = "";
+			
+			// Parse VTT Settings...
+			if (this.settings.length) {
+				var intSettings = this.intSettings;
+				settings = settings.split(/\s+/).filter(function(settingItem) { return settingItem.length > 0;});
+				if (settings instanceof Array) {
+					settings.forEach(function(cueItem) {
+						var settingMap = {"D":"verticalText","L":"linePosition","T":"textPosition","A":"textAlignment","S":"textSize"};
+						cueItem = cueItem.split(":");
+						if (settingMap[cueItem[0]]) {
+							intSettings[settingMap[cueItem[0]]] = cueItem[1];
+						}
+					});
+				}
+			}
+			
+			// Functions defined by spec (getters, kindof)
+			this.getCueAsSource = function getCueAsSource() {
+				return this.text;
+			};
+			
+			this.getCueAsHTML = function getCueAsHTML() {
+				var DOMFragment = document.createDocumentFragment();
+				var DOMNode = document.createElement("div");
+				DOMNode.innerHTML = this.text;
+				
+				Array.prototype.forEach.call(DOMNode.childNodes,function(child) {
+					DOMFragment.appendChild(child.cloneNode(true));
+				});
+				
+				return DOMFragment;
+			};
+			
+			if (Object.prototype.__defineGetter__) {
+				this.__defineGetter__("active", this.isActive);
+			} else if (Object.defineProperty) {
+				Object.defineProperty(this,"mode",
+				   {get: this.isActive}
+				);
+			}
+			
+			this.isActive = function() {
+				// will become more sophisticated later
+				if (this.track instanceof captionator.TextTrack) {
+					if (this.track.mode === 2 && this.track.readyState = 2) {
+						return true;
+					}
+				}
+				
+				return false;
+			}
+			
+			// Events defined by spec
+			
+			this.onenter = function() {};
+			this.onexit = function() {};
+		};
+		
+		// if requested by options, export the object types
+		if (options.exportObjects) {
+			window.TextTrack = captionator.TextTrack;
+			window.TextTrackCueList = captionator.TextTrackCueList;
+			window.ActiveTextTrackCueList = captionator.ActiveTextTrackCueList;
+			window.TextTrackCue = captionator.TextTrackCue;
+		}
+		
+		[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
+			videoElement.addTrack = function(kind,label,language,cueDataArray) {
+				var allowedKinds = ["subtitles","captions","descriptions","captions","metadata"];
+				var newTrack;
+				label = typeof(label) === "string" ? label : "";
+				language = typeof(language) === "string" ? language : "";
+				
+				// If the kind isn't known, throw DOM syntax error exception
+				if (!allowedKinds.filter(function (currentKind){
+						return kind === currentKind ? true : false;
+					}).length) {
+					throw captionator.createDOMException(12,"DOMException 12: SYNTAX_ERR: You must use a valid kind when creating a TimedTextTrack.","SYNTAX_ERR");
+				}
+				
+				newTrack = new captionator.TextTrack(kind,label,language,cueDataArray);
+				if (newTrack) {
+					if (!(videoElement.tracks instanceof Array)) {
+						videoElement.tracks = [];
+					}
+					
+					videoElement.tracks.push(newTrack);
+					return newTrack;
+				} else {
+					return false;
+				}
+			};
+		});
+		
 		
 		if (!element || element === false || element === undefined || element === null) {
 			videoElements = [].slice.call(document.getElementsByTagName("video"),0); // select and convert to array
 		} else {
 			if (element instanceof Array) {
 				for (elementIndex = 0; elementIndex < element.length; elementIndex ++) {
-					if (typeof(element[elementIndex]) == "string") {
+					if (typeof(element[elementIndex]) === "string") {
 						videoElements = videoElements.concat([].slice.call(document.querySelectorAll(element[elementIndex]),0)); // select and convert to array
-					} else if (element[elementIndex].constructor == HTMLVideoElement) {
+					} else if (element[elementIndex].constructor === HTMLVideoElement) {
 						videoElements.push(element[elementIndex]);
 					}
 				}
-			} else if (typeof(element) == "string") {
+			} else if (typeof(element) === "string") {
 				videoElements = [].slice.call(document.querySelectorAll(element),0); // select and convert to array
-			} else if (element.constructor == HTMLVideoElement) {
+			} else if (element.constructor === HTMLVideoElement) {
 				videoElements.push(element);
 			}
 		}
@@ -70,60 +399,6 @@ var captionator = {
 				captionator.processVideoElement(videoElements[elementIndex],defaultLanguage,options);
 			}
 			return true;
-		} else {
-			return false;
-		}
-	},
-	/*
-		captionator.generateTranscript(selector string | singular DOMElement,
-										transcriptDestination selector string | singular DOMElement,
-										[defaultLanguage - string in BCP47],
-										[options - JS Object])
-		
-		Generates a transcript based on a given video file (chooses a track element according to UA language or value
-		of the variable defaultLanguage)
-		
-		First parameter: Use a selector string which will select a single element, or a DOMElement.
-		
-		Second parameter: BCP-47 string for default language. If this parameter is omitted, the User Agent's language
-		will be used to choose a track.
-		
-		Third parameter: as yet unused - will implement greater control over generated transcripts later.
-		
-		
-		RETURNS:
-		
-		False on immediate failure due to input being malformed, otherwise true (even if the process fails later.)
-		Because of the asynchronous download requirements, this function can't really return anything meaningful.
-		
-		
-	*/
-	"generateTranscript": function(videoElement,transcriptDestination,defaultLanguage,options) {
-		"use strict";
-		var globalLanguage = defaultLanguage || navigator.language.split("-")[0];
-		var captionID;
-		options = options instanceof Object? options : {};
-		
-		if (typeof(videoElement) == "string") {
-			videoElement = document.querySelectorAll(videoElement)[0]; // if there's more than one element, return first
-		}
-		
-		if (typeof(transcriptDestination) == "string") {
-			transcriptDestination = document.querySelectorAll(transcriptDestination)[0];
-		}
-		
-		if (videoElement.constructor == HTMLVideoElement && typeof(transcriptDestination) == "object") {
-			var trackSource = [].slice.call(videoElement.querySelectorAll("track"),0)
-								.filter(function(trackElement) {
-									return trackElement.getAttribute("srclang").split("-")[0] == globalLanguage ? true : false;
-								})[0]
-								.getAttribute("src");
-			
-			captionator.fetchCaptions(trackSource,function(captionData) {
-				for (captionID = 0; captionID < captionData.length; captionID ++) {
-					transcriptDestination.innerHTML += "<p class='transcriptLine'>" + captionData[captionID].html + "</p>";
-				}
-			});
 		} else {
 			return false;
 		}
@@ -169,36 +444,105 @@ var captionator = {
 				videoElement.id = "captionator" + idComposite;
 			}
 			
-			// Get tracks for video element
-			// This section duplicates some properties to maintain compatibility with the W3 draft spec
-			// http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI
-			trackList = [].slice.call(videoElement.querySelectorAll("track"),0)
-						.map(function(trackElement) {
-							return {
-								"label":		trackElement.getAttribute("label"),
-								"name":			trackElement.getAttribute("label"),
-								"src":			trackElement.getAttribute("src"),
-								"type":			(trackElement.getAttribute("type")||"unknown"),
-								"language":		trackElement.getAttribute("srclang").split("-")[0],
-								"kind":			(trackElement.getAttribute("kind")||trackElement.getAttribute("role")),
-								"role":			(trackElement.getAttribute("kind")||trackElement.getAttribute("role")),
-								"enabled":		(trackElement.getAttribute("enabled") === "true" ||
-												trackElement.getAttribute("srclang").split("-")[0] == globalLanguage ? true : false),
-								"videoElement":	videoElement
-							};
-						});
-			
-			videoElement.tracks = trackList;
-			videoElement.subtitlesReady = false;
-			videoElement.captionatorOptions = options;
-			
-			trackList.forEach(function(trackElement,trackIndex) {
-				if (trackElement.enabled === true) {
-					captionator.fetchCaptions(trackElement.src, function(captionData) {
-						trackElement.captionData = captionData;
-						trackElement.subtitlesReady = true;
-						trackElement.enabled = true;
+			var enabledDefaultTrack = false;
+			[].slice.call(videoElement.querySelectorAll("track"),0).forEach(function(trackElement) {
+				var trackObject = videoElement.addTrack(
+										trackElement.getAttribute("kind"),
+										trackElement.getAttribute("label"),
+										trackElement.getAttribute("srclang").split("-")[0],
+										trackElement.getAttribute("src"));
+				
+				trackElement.track = trackObject;
+				trackObject.trackNode = trackElement;
+				trackList.push(trackObject);
+				
+				// Now determine whether the track is visible by default.
+				// The comments in this section come straight from the spec...
+				var trackEnabled = false;
+				
+				// If the text track kind is subtitles or captions and the user has indicated an interest in having a track
+				// with this text track kind, text track language, and text track label enabled, and there is no other text track
+				// in the media element's list of text tracks with a text track kind of either subtitles or captions whose text track mode is showing
+				// ---> Let the text track mode be showing.
+				
+				if ((trackObject.kind === "subtitles" || trackObject.kind === "captions") &&
+					(defaultLanguage === trackObject.language && options.enableCaptionsByDefault)) {
+					if (!trackList.filter(function(trackObject) {
+							if ((trackObject.kind === "captions" || trackObject.kind === "subtitles") && defaultLanguage === trackObject.language && trackObject.mode === 2) {
+								return true;
+							} else {
+								return false;
+							}
+						}).length) {
+						trackEnabled = true;
+					}
+				}
+				
+				// If the text track kind is chapters and the text track language is one that the user agent has reason to believe is
+				// appropriate for the user, and there is no other text track in the media element's list of text tracks with a text track
+				// kind of chapters whose text track mode is showing
+				// ---> Let the text track mode be showing.
+				
+				if (trackObject.kind === "chapters" && (defaultLanguage === trackObject.language)) {
+					if (!trackList.filter(function(trackObject) {
+							if (trackObject.kind === "chapters" && trackObject.mode === 2) {
+								return true;
+							} else {
+								return false;
+							}
+						}).length) {
+						trackEnabled = true;
+					}
+				}
+				
+				// If the text track kind is descriptions and the user has indicated an interest in having text descriptions
+				// with this text track language and text track label enabled, and there is no other text track in the media element's
+				// list of text tracks with a text track kind of descriptions whose text track mode is showing
+				
+				if (trackObject.kind === "descriptions" && (options.enableDescriptionsByDefault === true) && (defaultLanguage === trackObject.language)) {
+					if (!trackList.filter(function(trackObject) {
+							if (trackObject.kind === "descriptions" && trackObject.mode === 2) {
+								return true;
+							} else {
+								return false;
+							}
+						}).length) {
+						trackEnabled = true;
+					}
+				}
+				
+				//  ↪ If there is a text track in the media element's list of text tracks whose text track mode is showing by default,
+				// the user agent must furthermore change that text track's text track mode to hidden.
+				
+				if (trackEnabled === true) {
+					trackList.forEach(function(trackObject) {
+						if(trackObject.trackNode.hasAttribute("default") && trackObject.mode === 2) {
+							trackObject.mode = 1;
+						}
 					});
+				}
+				
+				// If the track element has a default attribute specified, and there is no other text track in the media element's
+				// list of text tracks whose text track mode is showing or showing by default
+				// Let the text track mode be showing by default.
+				
+				if (trackElement.hasAttribute("default")) {
+					if (!trackList.filter(function(trackObject) {
+							if (trackObject.trackNode.hasAttribute("default") && trackObject.trackNode !== trackElement) {
+								return true;
+							} else {
+								return false;
+							}
+						}).length) {
+						trackEnabled = true;
+					}
+				}
+				
+				// Otherwise
+				// Let the text track mode be disabled.
+				
+				if (trackEnabled === true) {
+					trackObject.mode = 2; // SHOWING
 				}
 			});
 			
@@ -217,89 +561,12 @@ var captionator = {
 		var trackList = videoElement.tracks;
 		var currentTime = videoElement.currentTime;
 		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
+		var visibleCues = [];
 		
-		trackList.forEach(function(trackElement,currentTrack) {
-			var captionData = trackList[currentTrack].captionData;
-			var subtitlesToDisplay = [], subtitleText;
-			var subtitleIndex;
-			var captionContainer = null;
-			var containerID = "captionator-" + videoElement.id + "-" + trackList[currentTrack].kind + "-" + trackList[currentTrack].language + currentTrack;
-			
-			if (trackElement.subtitlesReady && trackElement.enabled) {
-				if (options.container && !trackList[currentTrack].autogen) {
-					if (options.container instanceof Array) {
-						if (options.container.length > currentTrack && options.container[currentTrack]) {
-							captionContainer = options.container[currentTrack];
-						}
-					} else {
-						captionContainer = options.container;
-					}
-				} else {
-					captionContainer = "#" + containerID;
-				}
+		trackList.forEach(function(track,trackIndex) {
+			if (track.mode === 2 && track.readyState == 2) {
+				track.activeCues.refreshCues(); // Make sure we're up to date
 				
-				if (typeof(captionContainer) === "string") {
-					captionContainer = document.querySelectorAll(captionContainer)[0];
-				}
-				
-				if (typeof(captionContainer) !== "object" || captionContainer === null || captionContainer === undefined) {
-					captionContainer = document.createElement("div");
-					captionContainer.id = containerID;
-					videoElement.parentNode.appendChild(captionContainer);
-					captionator.styleContainer(captionContainer, trackList[currentTrack].kind, videoElement, false);
-					captionContainer.style.display = "none";
-					trackList[currentTrack].autogen = true;
-				}
-				
-				if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
-					var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
-					videoElement.setAttribute("aria-describedby",existingValue + containerID);
-				}
-			
-				if (captionData.length) {
-					for (subtitleIndex = 0; subtitleIndex < captionData.length; subtitleIndex ++) {
-						if (currentTime >= captionData[subtitleIndex].timeIn &&
-							currentTime <= captionData[subtitleIndex].timeOut) {
-							subtitlesToDisplay.push(captionData[subtitleIndex].html);
-						}
-					}
-				
-					subtitleText = "<div class='captionator-title'>" + subtitlesToDisplay.join("</div><div class='captionator-title'>") + "</div>";
-					if (!subtitlesToDisplay.length) {
-					
-						if (captionContainer.innerHTML.length) {
-							captionContainer.innerHTML = "";
-							captionContainer.style.display = "none";
-						}
-					} else {
-						if (captionContainer.oldCaptions !== subtitleText) {
-							captionContainer.oldCaptions = subtitleText;
-							captionContainer.innerHTML = subtitleText;
-							captionContainer.style.display = "block";
-						}
-					}
-				}
-			} else {
-				if (trackElement.enabled) {
-					captionator.fetchCaptions(trackElement.src, function(captionData) {
-						trackElement.captionData = captionData;
-						trackElement.subtitlesReady = true;
-						trackElement.enabled = true;
-						captionator.rebuildCaptions(videoElement);
-					});
-				} else {
-					if (trackElement.autogen) {
-						// The track element has been generated byt is now disabled... clean up the remains
-						// (We only remove/mutate auto-generated elements)
-						var oldCaptionContainer = document.getElementById(containerID);
-						if (oldCaptionContainer) {
-							oldCaptionContainer.parentNode.removeChild(oldCaptionContainer);
-						}
-						
-						// Store that the element has no longer been generated...
-						trackElement.autogen = false;
-					}
-				}
 			}
 		});
 	},
@@ -455,18 +722,12 @@ var captionator = {
 		Accepts and parses SRT caption/subtitle data. Will extend for WebVTT shortly. Perhaps non-JSON WebVTT will work already?
 		This function has been intended from the start to (hopefully) loosely parse both. I'll patch it as required.
 		
-		First parameter: Entire text data (UTF-8) of the retrieved SRT/WebVTT file. This parameter is mandatory.
+		First parameter: Entire text data (UTF-8) of the retrieved SRT/WebVTT file. This parameter is mandatory. (really - what did
+		you expect it was going to do without it!)
 		
 		RETURNS:
 		
-		An array of objects in the following format:
-		
-		Subtitle {
-			timeIn: Number in milliseconds - time that the caption is displayed
-			timeOut: Number in milliseconds - time that the caption is hidden
-			text: HTML-free text from caption (this is only a cursory clean - don't expect this to be XSS-safe)
-			html: HTML-inclusive data for rich captions
-		}
+		An array of TextTrackCue Objects in initial state.
 		
 	*/
 	"parseCaptions": function(captionData) {
@@ -487,15 +748,16 @@ var captionator = {
 							})
 							.map(function(subtitleElement) {
 								var subtitleParts = subtitleElement.split(/\n/g);
-								var timeIn, timeOut, text, html, timeData, subtitlePartIndex;
+								var timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
 								
 								if (subtitleParts[0].match(/^\s*\d+\s*$/ig)) {
-									subtitleParts.shift(0);
+									// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
+									id = String(subtitleParts.shift(0).split(/\s+/).join(""));
 								}
 								
 								for (subtitlePartIndex = 0; subtitlePartIndex < subtitleParts.length; subtitlePartIndex ++) {
 									if (subtitleParts[subtitlePartIndex].match(/^\d{2}:\d{2}:\d{2}[\.\,]\d+/)) {
-										timeData = subtitleParts[subtitlePartIndex].split(/\s+/ig,4);
+										timeData = subtitleParts[subtitlePartIndex].split(/\s+/ig);
 										timeIn = parseFloat(((timeData[0].split(/[:\,\.]/ig)[0] * 60 * 60) +
 															(timeData[0].split(/[:\,\.]/ig)[1] * 60) +
 															parseInt(timeData[0].split(/[:\,\.]/ig)[2],10)) + "." +
@@ -506,6 +768,10 @@ var captionator = {
 															parseInt(timeData[2].split(/[:\,\.]/ig)[2],10)) + "." +
 															parseInt(timeData[2].split(/[:\,\.]/ig)[3],10));
 										
+										if (timeData.length >= 4) {
+											cueSettings = timeData.splice(3).join(" ");
+										}
+										
 										subtitleParts = subtitleParts.slice(0,subtitlePartIndex).concat(subtitleParts.slice(subtitlePartIndex+1));
 										break;
 									}
@@ -513,50 +779,14 @@ var captionator = {
 								
 								// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
 								html = subtitleParts.join("\n");
-								text = html.replace(/<[^>]+>/ig,"");
-								
-								return {
-									timeIn: timeIn,
-									timeOut: timeOut,
-									text: text,
-									html: html
-								};
+								return new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
 							});
 			
 			return subtitles;
 		} else {
 			throw new Error("Required parameter captionData not supplied.");
 		}
-	},
-	/* 
-		captionator.fetchCaptions(string captionURI, function callback)
-		
-		Gets and parses valid SRT/WebVTT files.
-		
-		First parameter: String URL to valid SRT/WebVTT file.
-		
-		Second parameter: Callback function which accepts parsed subtitles as its first argument.
-		
-	*/
-	"fetchCaptions": function(captionURI, callback) {
-		"use strict";
-		var captionData, ajaxObject = new XMLHttpRequest();
-		
-		ajaxObject.open('GET', captionURI, true);
-		ajaxObject.onreadystatechange = function (eventData) {
-			if (ajaxObject.readyState == 4) {
-				if(ajaxObject.status == 200) {
-					captionData = captionator.parseCaptions(ajaxObject.responseText);
-					
-					if (callback instanceof Function) {
-						callback(captionData);
-					}
-				} else {
-					//console.log("Error loading captions\n");
-				}
-			}
-		};
-		ajaxObject.send(null);
-		
 	}
 };
+
+window.video = document.getElementsByTagName("video")[0];
