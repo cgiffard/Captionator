@@ -6,12 +6,13 @@ Captionator
 This basic polyfill aims to add support for the HTML5 video `<track>` element.
 
 It currently includes rudimentary support for multiple language subtitle tracks,
-auto-selected based on the user-agent language and implements the draft track API.
+auto-selected based on the user-agent language and implements the draft WHATWG
+track API.
 
 It is designed to be js-library independent (but I might port it to jQuery later,
 as the raw DOM is chunky indeed.) It currently works in browsers which offer support
-for HTML5 video, and relies on some JavaScript features you won't find in older
-browsers. (I thought this was perfectly reasonable!)
+for HTML5 video, and relies on some JavaScript (ECMAScript 5) features you won't
+find in older browsers (but they don't support HTML5 video anyway.)
   
 After including the library, adding captions to your video is pretty simple:
 
@@ -21,6 +22,11 @@ After including the library, adding captions to your video is pretty simple:
 			captionator.captionify();
 		});
 	</script>
+
+This will not only caption your video (this example will caption every element on 
+the page with Timed Text Tracks available to it,) but it will also provide a `.tracks`
+property on your video element(s) - which you can use to dynamically manipulate the track
+data as per the WHATWG specification.
 
 It's also easy to generate a transcript once a video has been captioned if required:
 
@@ -34,12 +40,12 @@ language(s), there are some extra options:
 The first parameter can be an array of selectors or DOMElements, or a single selector
 string or DOMElement. The second parameter is a language string.
 
-You can use the options parameter to specify a container in which you want Captionator to insert your captions:
+You can use the options parameter to specify your own render function for captions, if you
+don't like captionator's inbuilt renderer:
 
-	captionator.captionify(["#yourVideoElement1","#yourVideoElement2"],"de",{ container: "#captionContainer" });
-
-The container itself won't be touched, but its contents will be destroyed and recreated
-as the user seeks through the video file.
+	captionator.captionify(["#yourVideoElement1","#yourVideoElement2"],"de",{ renderer: myFunction });
+	
+(More on this below!)
 
 Multiple subtitles and containers
 ---------------------------------
@@ -49,24 +55,19 @@ Multiple subtitles and containers
 It's pretty straightforward to manage multiple enabled subtitle tracks. Take this set of track elements
 for example:
 
-	<track kind="captions" src="subs/english-subs.srt" srclang="en" label="English Subtitles" enabled="true" />
-	<track kind="captions" src="subs/german-subs.srt" srclang="de" label="German Subtitles" enabled="true" />
+	<track kind="captions" src="subs/english-subs.srt" srclang="en" label="English Subtitles" default />
+	<track kind="captions" src="subs/german-subs.srt" srclang="de" label="German Subtitles" />
 	<track kind="captions" src="subs/japanese-subs.srt" srclang="ja" label="Japanese Subtitles" />
-	<track kind="lyrics" src="subs/japanese-lyrics.srt" srclang="ja" label="Lyrics" enabled="true" />
-	
-In this case, three sets of subtitles are enabled by default. Unless you specify a specific container for each one,
+
+In this case, the English subtitles are enabled by default. Unless you specify a custom renderer,
 Captionator will automatically generate as many separate containers as are required for enabled tracks.
 
-Should you wish to specify your own containers for a number of (or every) subtitle track, you can use the following syntax
-when calling `captionator.captionify`:
+Should you wish to specify your own renderer, you can use the following syntax when calling `captionator.captionify`:
 
 	captionator.captionify(null,null,{
-		"container": [
-			"#englishSubtitles",
-			null,
-			null,
-			"#japaneseLyrics"
-		]
+		"renderer": function(yourHTMLVideoElement) {
+			...
+		}
 	});
 
 Each element in the array matches to the track element with the same index (i.e. the 0th element matches to the first track,
@@ -126,15 +127,21 @@ For a more advanced example, see the subtitle selector in the example file.
 The following lists options which you can pass to captionator:
 
 * `enableCaptionsByDefault` (Boolean) - determines whether to show captions by default, if a caption language matches the user's UA language or is selected for display according to the rules outlined in the [WHATWG specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html). Tracks with the `enabled` attribute set to `true` will be displayed regardless of this option.
-* `container`(Array | String | DOMObject) - defines either a single element or a list of elements which captionator will append the captions to instead of automatically generating its own elements.
 * `exportObjects` (Boolean) - instructs Captionator to export its own implementation of the TimedTextTrack objects (TextTrack, TextTrackCue, etc.) into the global scope. Captionator ordinarily keeps these within its own object. You might find this useful for creating code which utilises `instanceof` conditionals, or creates instances of these objects itself, which you want to be native-TextTrack-support-agnostic. (Phew, what a mouthful.)
+
+**Temporarily Disabled**
+
+The following items are temporarily disabled while the WHATWG spec is implemented (as opposed to the W3 spec previously used)
+
+* `container`(Array | String | DOMObject) - defines either a single element or a list of elements which captionator will append the captions to instead of automatically generating its own elements.
 
 
 New Features
 ---------------
 
-* Support for `aria-describedby`
-* Implements the W3 draft Multitrack Media API proposal: http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI
+* Support for `aria-describedby`, `aria-live`, and `aria-atomic`
+* <s>Implements the W3 draft Multitrack Media API proposal: http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI</s>
+* Now implements the WHATWG draft [Timed Text Track specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html), which is far more up to date and better documented.
 * Through the spec, supports dynamic subtitle toggling (as demonstrated in the example file)
 * Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
 * Adaptively scales default subtitle UI to fit video

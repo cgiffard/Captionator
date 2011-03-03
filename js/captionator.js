@@ -95,12 +95,26 @@ var captionator = {
 			};
 			
 			this.setMode = function(value) {
-				var allowedModes = [OFF,HIDDEN,SHOWING];
+				var allowedModes = [OFF,HIDDEN,SHOWING], containerID, container;
 				if (allowedModes.indexOf(value) !== -1) {
-					this.internalMode = value;
+					if (value !== this.internalMode) {
+						this.internalMode = value;
 					
-					if (this.readyState === NONE && this.src.length > 0) {
-						this.loadTrack(this.src);
+						if (this.readyState === NONE && this.src.length > 0 && value > OFF) {
+							this.loadTrack(this.src);
+						}
+						
+						if (this.readyState === LOADED) {
+							captionator.rebuildCaptions(this.videoNode);
+						}
+					
+						if (value === OFF || value === HIDDEN) {
+							containerID = "captionator-" + this.videoNode.id + "-" + this.kind + "-" + this.language;
+							container = document.getElementById(containerID);
+							if (container) {
+								container.parentNode.removeChild(container);
+							}
+						}
 					}
 				} else {
 					throw new Error("Illegal mode value for track.");
@@ -133,6 +147,7 @@ var captionator = {
 							if(ajaxObject.status === 200) {
 								captionData = captionator.parseCaptions(ajaxObject.responseText);
 								currentTrackElement.readyState = LOADED;
+								captionator.rebuildCaptions(currentTrackElement.videoNode);
 								currentTrackElement.cues.loadCues(captionData);
 								currentTrackElement.onload();
 								
@@ -191,7 +206,7 @@ var captionator = {
 		// Define read-only properties
 		
 		captionator.TextTrackCueList = function TextTrackCueList(track) {
-			this.track = track instanceof captionator.TextTrack || null;
+			this.track = track instanceof captionator.TextTrack ? track : null;
 			
 			this.getCueById = function(cueID) {
 				return this.filter(function(currentCue) {
@@ -224,19 +239,23 @@ var captionator = {
 			// any cues with identical end times must be sorted in the order they were created (so
 			// e.g. for cues from a WebVTT file, that would be the order in which the cues were
 			// listed in the file).
-			
 			this.refreshCues = function() {
+				var cueList = this;
 				this.length = 0;
 				textTrackCueList.forEach(function(cue) {
 					if (cue.active) {
-						this.push(cue);
+						cueList.push(cue);
 					}
 				});
 			};
 			
+			this.toString = function() {
+				return "[ActiveTextTrackCueList]";
+			}
+			
 			this.refreshCues();
 		};
-		captionator.ActiveTextTrackCueList.prototype = captionator.TextTrackCueList;
+		captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList;
 		
 		captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
 			// Set up internal data store
@@ -248,7 +267,6 @@ var captionator = {
 			this.settings = typeof(settings) === "string" ? settings : "";
 			this.intSettings = {};
 			this.pauseOnExit = !!pauseOnExit;
-			this.track = track;
 			
 			// Parse settings & set up cue defaults
 			
@@ -314,23 +332,23 @@ var captionator = {
 				return DOMFragment;
 			};
 			
-			if (Object.prototype.__defineGetter__) {
-				this.__defineGetter__("active", this.isActive);
-			} else if (Object.defineProperty) {
-				Object.defineProperty(this,"mode",
-				   {get: this.isActive}
-				);
-			}
-			
 			this.isActive = function() {
 				// will become more sophisticated later
 				if (this.track instanceof captionator.TextTrack) {
-					if (this.track.mode === 2 && this.track.readyState = 2) {
+					if (this.track.mode === 2 && this.track.readyState === 2) {
 						return true;
 					}
 				}
 				
 				return false;
+			}
+			
+			if (Object.prototype.__defineGetter__) {
+				this.__defineGetter__("active", this.isActive);
+			} else if (Object.defineProperty) {
+				Object.defineProperty(this,"active",
+				   {get: this.isActive}
+				);
 			}
 			
 			// Events defined by spec
@@ -431,6 +449,7 @@ var captionator = {
 		options = options instanceof Object? options : {};
 		
 		if (!videoElement.captioned) {
+			videoElement.captionatorOptions = options;
 			videoElement.className += (videoElement.className.length ? " " : "") + "captioned";
 			videoElement.captioned = true;
 			
@@ -454,6 +473,7 @@ var captionator = {
 				
 				trackElement.track = trackObject;
 				trackObject.trackNode = trackElement;
+				trackObject.videoNode = videoElement;
 				trackList.push(trackObject);
 				
 				// Now determine whether the track is visible by default.
@@ -559,14 +579,52 @@ var captionator = {
 	"rebuildCaptions": function(videoElement) {
 		"use strict";
 		var trackList = videoElement.tracks;
-		var currentTime = videoElement.currentTime;
 		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
 		var visibleCues = [];
+		var currentTime = videoElement.currentTime;
+		var containerID = "captionator-unset"; // Hopefully you don't actually see this in your id attribute!
+		var containerObject = null;
 		
+		// Work out what cues are showing...
 		trackList.forEach(function(track,trackIndex) {
 			if (track.mode === 2 && track.readyState == 2) {
 				track.activeCues.refreshCues(); // Make sure we're up to date
+				track.activeCues.forEach(function(cue) {
+					if (cue.startTime <= currentTime && cue.endTime >= currentTime) {
+						visibleCues.push(cue);
+					}
+				});
 				
+				
+			}
+		});
+		
+		// Now run through and display these cues (& call relevant events)
+		visibleCues.forEach(function(cue) {
+			containerID = "captionator-" + videoElement.id + "-" + cue.track.kind + "-" + cue.track.language;
+			if (cue.track.containerObject) {
+				containerObject = cue.track.containerObject;
+			} else {
+				containerObject = document.getElementById(containerID);
+			}
+			
+			if (!containerObject) {
+				containerObject = document.createElement("div");
+				containerObject.id = containerID;
+				document.body.appendChild(containerObject);
+				cue.track.containerObject = containerObject;
+				containerObject.setAttribute("aria-live","polite");
+				containerObject.setAttribute("aria-atomic","true");
+				captionator.styleContainer(containerObject,cue.track.kind,cue.track.videoNode);
+			}
+			
+			if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
+				var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
+				videoElement.setAttribute("aria-describedby",existingValue + containerID);
+			}
+			
+			if (containerObject.innerHTML !== cue.getCueAsSource()) {
+				containerObject.innerHTML = cue.getCueAsSource();
 			}
 		});
 	},
@@ -713,7 +771,9 @@ var captionator = {
 					// Whoah, we didn't prepare for this one. Just class it with the requested name and move on.
 			}
 			
-			DOMNode.className += (DOMNode.className.length ? " " : "") + "captionator-kind-" + kind;
+			if (DOMNode.className.indexOf("captionator-kind") === -1) {
+				DOMNode.className += (DOMNode.className.length ? " " : "") + "captionator-kind-" + kind;
+			}
 		}
 	},
 	/*

@@ -1,6 +1,7 @@
 TODO
 ----
 
+* API Reference Docs
 * Fix language parsing
 * Where UA language doesn't match first, use the language of the document
 * **DONE!** <s>Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)</s>
@@ -15,7 +16,9 @@ TODO
 
 **Big Stuff**
 
-* Include compatibility with the in-development JS Multitrack API described by [this W3C Document](http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI).
+* Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
+* Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
+* Put back external container support (removed when moving from the W3 spec to the WHATWG spec, as the way I'd implemented it didn't fit the model any more)
 * Implement animation options
 * Support audio and video tracks too (!!!)
 * Include QUnit test framework & tests file

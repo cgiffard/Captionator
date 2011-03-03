@@ -17,6 +17,7 @@
 			<track kind="captions" src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Japanese Subtitles" />
 			<!-- <track kind="lyrics"   src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Lyrics" /> -->
 		</video>
+		<div id="captionystuff"></div>
 		<h2>Media Controls</h2>
 		<div id="controls"></div>
 		<h2>Transcript</h2>
@@ -46,7 +47,7 @@
 				subtitleSelector.addEventListener("change",function(eventData) {
 					trackToEnable = parseInt(eventData.target.value,10);
 					document.getElementById("videoTest").tracks.forEach(function(track,index) {
-						track.enabled = index === trackToEnable ? true : false;
+						track.mode = index === trackToEnable ? 2 : 1;
 					});
 					
 					// Will be superceded once I write some getters/setters into the track object
