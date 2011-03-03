@@ -4,19 +4,19 @@ TODO
 * API Reference Docs
 * Fix language parsing
 * Where UA language doesn't match first, use the language of the document
-* **DONE!** <s>Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)</s>
+* **DONE!** <strike>Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)</strike>
 * Test with proper WebVTT files & confirm support for them
 * Add (option to prepend) timestamps to generated transcript
 * **50%** Formalise and document options argument
 * Ensure non-breakingness in old browsers (i.e. won't work - but won't cause script errors either)
 * Investigate (safari) webkit embedded subtitles API and determine whether to switch off embedded subtitles if Captionator present, or to use the embedded subtitles instead
-* **DONE!** <s>The W3C or the WHATWG haven't really been clear on the `track` element's `kind` property. Determine an appropriate behaviour for it.</s>
-* **DONE!** <s>Test with more than one video on a page (it should already work - ...or does it?)</s>
+* **DONE!** <strike>The W3C or the WHATWG haven't really been clear on the `track` element's `kind` property. Determine an appropriate behaviour for it.</strike>
+* **DONE!** <strike>Test with more than one video on a page (it should already work - ...or does it?)</strike>
 * Positional collision detection for subtitles, preventing overlaps. How this should be implemented is a bit of a debate.
-* **DONE!** <s>Enable use of external renderer</s>
+* **DONE!** <strike>Enable use of external renderer</strike>
 * Fix `oncuechange` event firing
 
-**Big Stuff**
+## Big Stuff ##
 
 * **80%** Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
 * Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
@@ -27,7 +27,7 @@ TODO
 * Externalise & modularise parser, possibly move WebSRT parser to a different file (this won't affect the published API at all)
 * Write a parser for TTML
 
-**Bugs**
+## Bugs ##
 
 * **FIXED** Something's up in firefox: [Firefox error 'setting a property that only has a getter' when calling Array.prototype.slice](http://stackoverflow.com/questions/5087755/firefox-error-setting-a-property-that-only-has-a-getter-when-calling-array-prot)
 * **FIXED** Script inefficiently reapplies subtitle data with every event call (not by design)
