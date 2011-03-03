@@ -137,7 +137,6 @@ New Features
 ---------------
 
 * Support for `aria-describedby`, `aria-live`, and `aria-atomic`
-* <strike>Implements the W3 draft Multitrack Media API proposal: http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI</strike>
 * Now implements the WHATWG draft [Timed Text Track specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html), which is far more up to date and better documented.
 * Through the spec, supports dynamic subtitle manipulation (as demonstrated in the example file)
 * Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
