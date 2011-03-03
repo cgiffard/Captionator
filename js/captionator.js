@@ -848,5 +848,3 @@ var captionator = {
 		}
 	}
 };
-
-window.video = document.getElementsByTagName("video")[0];
