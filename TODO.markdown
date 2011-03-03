@@ -13,15 +13,19 @@ TODO
 * **DONE!** <s>The W3C or the WHATWG haven't really been clear on the `track` element's `kind` property. Determine an appropriate behaviour for it.</s>
 * **DONE!** <s>Test with more than one video on a page (it should already work - ...or does it?)</s>
 * Positional collision detection for subtitles, preventing overlaps. How this should be implemented is a bit of a debate.
+* **DONE!** <s>Enable use of external renderer</s>
+* Fix `oncuechange` event firing
 
 **Big Stuff**
 
-* Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
+* **80%** Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
 * Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
 * Put back external container support (removed when moving from the W3 spec to the WHATWG spec, as the way I'd implemented it didn't fit the model any more)
 * Implement animation options
 * Support audio and video tracks too (!!!)
 * Include QUnit test framework & tests file
+* Externalise & modularise parser, possibly move WebSRT parser to a different file (this won't affect the published API at all)
+* Write a parser for TTML
 
 **Bugs**
 

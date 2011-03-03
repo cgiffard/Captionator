@@ -8,14 +8,13 @@
 	<body>
 		<h1>HTML5 Video Closed Captioning Example</h1>
 		<p><em><strong>Note:</strong> the German and Japanese subtitles are machine translated.</em></p>
-		<video controls data-captions autobuffer id="videoTest" width="1024" height="464">
+		<video controls autobuffer id="videoTest" width="1024" height="464">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
 			<track kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" default />
 			<track kind="captions" src="video/arduino-de.srt" type="text/srt" srclang="de" label="German Subtitles" />
 			<track kind="captions" src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Japanese Subtitles" />
-			<!-- <track kind="lyrics"   src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Lyrics" /> -->
 		</video>
 		<div id="captionystuff"></div>
 		<h2>Media Controls</h2>
@@ -28,11 +27,8 @@
 		-->
 		<script type="text/javascript">
 			window.addEventListener("load",function(eventData) {
-				captionator.captionify(null,null,{
-					enableCaptionsByDefault:true,
-					enableDescriptionsByDefault:true
-				});
-				// captionator.generateTranscript("#videoTest","#transcript");
+				captionator.captionify();
+				document.getElementsByTagName("video")[0].tracks[0].generateTranscript("#transcript");
 			},false);
 		</script>
 		<!--
@@ -47,13 +43,9 @@
 				subtitleSelector.addEventListener("change",function(eventData) {
 					trackToEnable = parseInt(eventData.target.value,10);
 					document.getElementById("videoTest").tracks.forEach(function(track,index) {
-						track.mode = index === trackToEnable ? 2 : 1;
+						track.mode = index === trackToEnable ? 2 : 0;
 					});
-					
-					// Will be superceded once I write some getters/setters into the track object
-					// and do a little more abstraction
-					captionator.rebuildCaptions(document.getElementById("videoTest"));
-				});
+				},false);
 				
 				document.getElementById("videoTest").tracks.forEach(function(track,index) {
 					var subtitleOption = document.createElement("option");

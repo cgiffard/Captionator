@@ -1,5 +1,5 @@
 /* 
-	Captionator 0.1
+	Captionator 0.2
 	Christopher Giffard, 2011
 	Share and enjoy
 
@@ -68,13 +68,13 @@ var captionator = {
 		// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
 		
 		captionator.TextTrack = function TextTrack(kind,label,language,trackSource) {
-			const NONE = 0;
-			const LOADING = 1;
-			const LOADED = 2;
-			const ERROR = 3;
-			const OFF = 0;
-			const HIDDEN = 1;
-			const SHOWING = 2;
+			var NONE = 0;
+			var LOADING = 1;
+			var LOADED = 2;
+			var ERROR = 3;
+			var OFF = 0;
+			var HIDDEN = 1;
+			var SHOWING = 2;
 			
 			this.onload = function () {};
 			this.onerror = function() {};
@@ -85,7 +85,7 @@ var captionator = {
 			this.activeCues = new captionator.ActiveTextTrackCueList(this.cues);
 			this.kind = kind || "caption";
 			this.label = label || "";
-			this.language = language || navigator.language.split("-")[0];
+			this.language = language || "";
 			this.src = trackSource || "";
 			this.readyState = NONE;
 			
@@ -164,22 +164,29 @@ var captionator = {
 				}
 			};
 			
-			this.generateTranscript = function(destinationElement) {
-				var captionID, transcriptDestination, captionData;
+			this.generateTranscript = function(transcriptDestination) {
+				console.log("generating transcript",transcriptDestination);
+				var captionID, captionData;
 				
-				if (typeof(destinationElement) === "string") {
+				if (typeof(transcriptDestination) === "string") {
 					transcriptDestination = document.querySelectorAll(transcriptDestination)[0];
 				}
 				
 				if (typeof(transcriptDestination) === "object") {
 					if (this.readyState === LOADED) {
-						for (captionID = 0; captionID < captionData.length; captionID ++) {
-							transcriptDestination.innerHTML += "<p class='transcriptLine'>" + captionData[captionID].html + "</p>";
-						}
-					} else {
-						this.loadTrack(function() {
-							this.generateTranscript(destinationElement);
+						this.cues.forEach(function(cue) {
+							transcriptDestination.innerHTML += "<p class='transcriptLine'>" + cue.getCueAsSource() + "</p>";
 						});
+					} else {
+						if (this.readyState === LOADING) {
+							this.onload = function() {
+								this.generateTranscript(transcriptDestination);
+							}
+						} else {
+							this.loadTrack(this.src,function() {
+								this.generateTranscript(transcriptDestination);
+							});
+						}
 					}
 				} else {
 					return false;
@@ -191,7 +198,7 @@ var captionator = {
 			// Raises an exception if the argument is null, associated with another text track, or already in the list of cues.
 			
 			this.addCue = function() {
-				this.activeCues.refreshCues();
+				
 			};
 			
 			// mutableTextTrack.removeCue(cue)
@@ -199,7 +206,7 @@ var captionator = {
 			// Raises an exception if the argument is null, associated with another text track, or not in the list of cues.
 			
 			this.removeCue = function() {
-				this.activeCues.refreshCues();
+				
 			};
 		};
 		
@@ -251,11 +258,11 @@ var captionator = {
 			
 			this.toString = function() {
 				return "[ActiveTextTrackCueList]";
-			}
+			};
 			
 			this.refreshCues();
 		};
-		captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList;
+		captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList();
 		
 		captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
 			// Set up internal data store
@@ -333,15 +340,22 @@ var captionator = {
 			};
 			
 			this.isActive = function() {
-				// will become more sophisticated later
+				var currentTime = 0;
 				if (this.track instanceof captionator.TextTrack) {
 					if (this.track.mode === 2 && this.track.readyState === 2) {
-						return true;
+						try {
+							currentTime = this.track.videoNode.currentTime;
+							if (this.startTime <= currentTime && this.endTime >= currentTime) {
+								return true;
+							}
+						} catch(Error) {
+							return false;
+						}
 					}
 				}
 				
 				return false;
-			}
+			};
 			
 			if (Object.prototype.__defineGetter__) {
 				this.__defineGetter__("active", this.isActive);
@@ -568,7 +582,19 @@ var captionator = {
 			
 			videoElement.addEventListener("timeupdate", function(eventData){
 				var videoElement = eventData.target;
-				captionator.rebuildCaptions(videoElement);
+				// update active cues
+				try {
+					videoElement.tracks.forEach(function(track) {
+						track.activeCues.refreshCues();
+					});
+				} catch(error) {}
+				
+				// External renderer?
+				if (options.renderer instanceof Function) {
+					options.renderer.call(captionator,videoElement);
+				} else {
+					captionator.rebuildCaptions(videoElement);
+				}
 			}, false);
 		}
 		
@@ -580,51 +606,52 @@ var captionator = {
 		"use strict";
 		var trackList = videoElement.tracks;
 		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
-		var visibleCues = [];
 		var currentTime = videoElement.currentTime;
 		var containerID = "captionator-unset"; // Hopefully you don't actually see this in your id attribute!
 		var containerObject = null;
+		var compositeCueHTML = "";
 		
 		// Work out what cues are showing...
 		trackList.forEach(function(track,trackIndex) {
-			if (track.mode === 2 && track.readyState == 2) {
-				track.activeCues.refreshCues(); // Make sure we're up to date
+			if (track.mode === 2 && track.readyState === 2) {
+				containerID = "captionator-" + videoElement.id + "-" + track.kind + "-" + track.language;
+				if (track.containerObject) {
+					containerObject = track.containerObject;
+				} else {
+					containerObject = document.getElementById(containerID);
+				}
+
+				if (!containerObject) {
+					containerObject = document.createElement("div");
+					containerObject.id = containerID;
+					document.body.appendChild(containerObject);
+					track.containerObject = containerObject;
+					containerObject.setAttribute("aria-live","polite");
+					containerObject.setAttribute("aria-atomic","true");
+					captionator.styleContainer(containerObject,track.kind,track.videoNode);
+				} else if (!containerObject.parentNode) {
+					document.body.appendChild(containerObject);
+				}
+
+				if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
+					var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
+					videoElement.setAttribute("aria-describedby",existingValue + containerID);
+				}
+				
+				compositeCueHTML = "";
 				track.activeCues.forEach(function(cue) {
-					if (cue.startTime <= currentTime && cue.endTime >= currentTime) {
-						visibleCues.push(cue);
-					}
+					compositeCueHTML += "<div class=\"captionator-cue\">" + cue.getCueAsSource() + "</div>";
 				});
 				
+				if (String(containerObject.innerHTML) !== compositeCueHTML) {
+					containerObject.innerHTML = compositeCueHTML;
+				}
 				
-			}
-		});
-		
-		// Now run through and display these cues (& call relevant events)
-		visibleCues.forEach(function(cue) {
-			containerID = "captionator-" + videoElement.id + "-" + cue.track.kind + "-" + cue.track.language;
-			if (cue.track.containerObject) {
-				containerObject = cue.track.containerObject;
-			} else {
-				containerObject = document.getElementById(containerID);
-			}
-			
-			if (!containerObject) {
-				containerObject = document.createElement("div");
-				containerObject.id = containerID;
-				document.body.appendChild(containerObject);
-				cue.track.containerObject = containerObject;
-				containerObject.setAttribute("aria-live","polite");
-				containerObject.setAttribute("aria-atomic","true");
-				captionator.styleContainer(containerObject,cue.track.kind,cue.track.videoNode);
-			}
-			
-			if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
-				var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
-				videoElement.setAttribute("aria-describedby",existingValue + containerID);
-			}
-			
-			if (containerObject.innerHTML !== cue.getCueAsSource()) {
-				containerObject.innerHTML = cue.getCueAsSource();
+				if (compositeCueHTML.length) {
+					containerObject.style.display = "block";
+				} else {
+					containerObject.style.display = "none";
+				}
 			}
 		});
 	},
@@ -723,7 +750,7 @@ var captionator = {
 						"fontWeight":		"bold",
 						"textAlign":		"center",
 						"paddingLeft":		"20px",
-						"paddingRight":		"20px",
+						"paddingRight":		"20px"
 					});
 					
 				break;
@@ -752,7 +779,7 @@ var captionator = {
 						"fontWeight":		"lighter",
 						"textAlign":		"center",
 						"paddingLeft":		"20px",
-						"paddingRight":		"20px",
+						"paddingRight":		"20px"
 					});
 				
 				break;

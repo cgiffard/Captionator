@@ -3,6 +3,8 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5**
 
+**Implements WHATWG TimedTextTrack Specification!**
+
 This basic polyfill aims to add support for the HTML5 video `<track>` element.
 
 It currently includes rudimentary support for multiple language subtitle tracks,
@@ -29,8 +31,9 @@ property on your video element(s) - which you can use to dynamically manipulate 
 data as per the WHATWG specification.
 
 It's also easy to generate a transcript once a video has been captioned if required:
-
-	captionator.generateTranscript("#yourVideoElement","#divForTranscript");
+	
+	var track = document.getElementsById("myVideo").tracks[0];
+	track.generateTranscript("#divForTranscript"); // Doesn't *have* to be a div, of course!
 
 If you've got specific requirements about which videos get captioned, and in what
 language(s), there are some extra options:
@@ -60,7 +63,8 @@ for example:
 	<track kind="captions" src="subs/japanese-subs.srt" srclang="ja" label="Japanese Subtitles" />
 
 In this case, the English subtitles are enabled by default. Unless you specify a custom renderer,
-Captionator will automatically generate as many separate containers as are required for enabled tracks.
+Captionator will automatically generate as many separate containers as are required for enabled tracks, set up
+the relevant events and style
 
 Should you wish to specify your own renderer, you can use the following syntax when calling `captionator.captionify`:
 
@@ -70,15 +74,14 @@ Should you wish to specify your own renderer, you can use the following syntax w
 		}
 	});
 
-Each element in the array matches to the track element with the same index (i.e. the 0th element matches to the first track,
-the 3rd element matches the fourth track etc.)
+The renderer function you define is executed, and passed the HTMLVideoElement whenever it fires a
+`timeupdate` event. You can use the `TextTrack.activeCues` to determine what cues should be displayed at any given time.
 
-Null or empty elements trigger automatically generated containers - so in the example above, the German and Japanese subtitle
-tracks (when enabled) would have automatically generated containers.
+The event data for the video timeupdate event is *not* passed to your function. This is because you are defining
+a renderer, not an event handler. Should future Captionator updates require caption re-rendering on different events
+(or in places not triggered by events at all) code which depends on event information will not function correctly.
 
-### Enabling and disabling subtitle tracks programatically ###
-
-**IMPORTANT: SUBJECT TO CHANGE - switching from W3 spec to [WHATWG spec](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html#timed-text-tracks)**
+### Enabling and disabling subtitle tracks programatically: A Quick Guide ###
 
 You can find a demonstration of this feature in the example file.
 
@@ -96,14 +99,10 @@ By extension, getting access to the track you want is as simple as:
 Each track defines the following user accessible properties:
 
 * `label` - String - describes the track (in plain human language)
-* `name` - same as above (for W3 spec compatibility)
-* `src` - URI for the resource
-* `type` - MIME Content type for the resource (e.g. text/srt)
 * `language` - BCP47 language string which describes the track
-* `kind` - Resource type (e.g. `subtitle`, `caption`, `lyrics`, `karaoke`, `alternate`, `chapters`, etc. See full list [here](http://www.w3.org/WAI/PF/HTML/wiki/Media_Multiple_Text_Tracks_API#Available_Roles))
-* `role` - as above - maintained for W3 spec compatibility
-* `enabled` - the most important property (probably!) - determines whether captionator will fetch and render the resource.
-* `videoElement` - the HTMLVideoElement which the track relates to/extends
+* `kind` - Resource type (one of `subtitles`, `captions`, `chapters`, `descriptions`, `metadata`.)
+* `mode` - the most important property (probably!) - determines whether captionator will fetch and render the resource.
+* `videoNode` - the HTMLVideoElement which the track relates to/extends. (Not in the WHATWG spec.)
 
 Ergo, to access the property `language` from the third track, you'd use the following code:
 
@@ -111,10 +110,12 @@ Ergo, to access the property `language` from the third track, you'd use the foll
 	
 To enable or disable a track:
 
-	myVideo.tracks[2].enabled = true;
-	myVideo.tracks[2].enabled = false;
+	myVideo.tracks[2].mode = 2; // SHOWING
+	myVideo.tracks[2].mode = 1; // HIDDEN
+	myVideo.tracks[2].mode = 0; // OFF
 
-The track is then enabled/disabled when the video fires a `timeupdate` event. You can update it immediately like so:
+The track is then enabled/disabled when the video fires a `timeupdate` event, or when a track mode changes.
+You can update it immediately like so:
 
 	captionator.rebuildCaptions(myVideo);
 
@@ -127,13 +128,9 @@ For a more advanced example, see the subtitle selector in the example file.
 The following lists options which you can pass to captionator:
 
 * `enableCaptionsByDefault` (Boolean) - determines whether to show captions by default, if a caption language matches the user's UA language or is selected for display according to the rules outlined in the [WHATWG specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html). Tracks with the `enabled` attribute set to `true` will be displayed regardless of this option.
-* `exportObjects` (Boolean) - instructs Captionator to export its own implementation of the TimedTextTrack objects (TextTrack, TextTrackCue, etc.) into the global scope. Captionator ordinarily keeps these within its own object. You might find this useful for creating code which utilises `instanceof` conditionals, or creates instances of these objects itself, which you want to be native-TextTrack-support-agnostic. (Phew, what a mouthful.)
-
-**Temporarily Disabled**
-
-The following items are temporarily disabled while the WHATWG spec is implemented (as opposed to the W3 spec previously used)
-
-* `container`(Array | String | DOMObject) - defines either a single element or a list of elements which captionator will append the captions to instead of automatically generating its own elements.
+* `enableDescriptionsByDefault` (Boolean) - as above, except for `description` track types instead of `caption` or `subtitle` types.
+* `exportObjects` (Boolean) - instructs Captionator to export its own implementation of the TimedTextTrack objects (TextTrack, TextTrackCue, etc.) and their relevant constants into the global scope. Captionator ordinarily keeps these within its own object. You might find this useful for creating code which utilises `instanceof` conditionals, or creates instances of these objects itself, which you want to be native-TextTrack-support-agnostic. (Phew, what a mouthful.)
+* `renderer` (Function) - sets an alternative renderer for captions & subtitles. You can utilise the WHATWG TimedTextTrack specification to manipulate or get information about the tracks themselves.
 
 
 New Features
@@ -142,6 +139,6 @@ New Features
 * Support for `aria-describedby`, `aria-live`, and `aria-atomic`
 * <s>Implements the W3 draft Multitrack Media API proposal: http://www.w3.org/WAI/PF/HTML/wiki/Media_MultitrackAPI</s>
 * Now implements the WHATWG draft [Timed Text Track specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html), which is far more up to date and better documented.
-* Through the spec, supports dynamic subtitle toggling (as demonstrated in the example file)
+* Through the spec, supports dynamic subtitle manipulation (as demonstrated in the example file)
 * Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
 * Adaptively scales default subtitle UI to fit video
