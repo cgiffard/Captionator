@@ -3,7 +3,7 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5**
 
-**Implements WHATWG TimedTextTrack Specification!**
+**Implements WHATWG TimedTextTrack Specification! Works in Firefox 3+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
 
 This basic polyfill aims to add support for the HTML5 video `<track>` element.
 
@@ -141,3 +141,10 @@ New Features
 * Through the spec, supports dynamic subtitle manipulation (as demonstrated in the example file)
 * Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
 * Adaptively scales default subtitle UI to fit video
+
+Licence
+----------------
+
+You may copy and use this library as you see fit (including commercial use) and modify it, as long as you retain my attribution comment (which includes my name, link to this github page, and library version) at the top of the script. You may not, under any circumstances, claim you wrote this library, or remove my attribution. (Fair's fair!)
+
+I'd appreciate it if you'd contribute patches back, but you don't have to.

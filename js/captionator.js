@@ -18,7 +18,10 @@ var captionator = {
 	        document.querySelectorAll("div/[]");
 	    } catch(Error) {
 			// Catch it and subclass it
-			var CustomDOMException = function(code,message,name){ this.code = code; this.message = message; this.name = name; };
+			/**
+			 * @constructor
+			 */
+			var CustomDOMException = function CustomDOMException(code,message,name){ this.code = code; this.message = message; this.name = name; };
 			CustomDOMException.prototype = Error;
 	        return new CustomDOMException(code,message,name);
 	    }
@@ -66,7 +69,9 @@ var captionator = {
 		
 		// Set up objects & types
 		// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
-		
+		/**
+		 * @constructor
+		 */
 		captionator.TextTrack = function TextTrack(kind,label,language,trackSource) {
 			var NONE = 0;
 			var LOADING = 1;
@@ -101,7 +106,7 @@ var captionator = {
 						this.internalMode = value;
 					
 						if (this.readyState === NONE && this.src.length > 0 && value > OFF) {
-							this.loadTrack(this.src);
+							this.loadTrack(this.src,null);
 						}
 						
 						if (this.readyState === LOADED) {
@@ -165,7 +170,6 @@ var captionator = {
 			};
 			
 			this.generateTranscript = function(transcriptDestination) {
-				console.log("generating transcript",transcriptDestination);
 				var captionID, captionData;
 				
 				if (typeof(transcriptDestination) === "string") {
@@ -211,7 +215,9 @@ var captionator = {
 		};
 		
 		// Define read-only properties
-		
+		/**
+		 * @constructor
+		 */
 		captionator.TextTrackCueList = function TextTrackCueList(track) {
 			this.track = track instanceof captionator.TextTrack ? track : null;
 			
@@ -234,6 +240,9 @@ var captionator = {
 		};
 		captionator.TextTrackCueList.prototype = [];
 		
+		/**
+		 * @constructor
+		 */
 		captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList) {
 			// Among active cues:
 			
@@ -262,14 +271,17 @@ var captionator = {
 			
 			this.refreshCues();
 		};
-		captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList();
+		captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList(null);
 		
+		/**
+		 * @constructor
+		 */
 		captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
 			// Set up internal data store
 			this.id = id;
 			this.track = track instanceof captionator.TextTrack ? track : null;
-			this.startTime = parseFloat(startTime,10);
-			this.endTime = parseFloat(endTime,10);
+			this.startTime = parseFloat(startTime);
+			this.endTime = parseFloat(endTime);
 			this.text = typeof(text) === "string" ? text : "";
 			this.settings = typeof(settings) === "string" ? settings : "";
 			this.intSettings = {};
@@ -459,7 +471,8 @@ var captionator = {
 	"processVideoElement": function(videoElement,defaultLanguage,options) {
 		"use strict";
 		var trackList = [];
-		var globalLanguage = defaultLanguage || navigator.language.split("-")[0];
+		var language = navigator.language || navigator.userLanguage;
+		var globalLanguage = defaultLanguage || language.split("-")[0];
 		options = options instanceof Object? options : {};
 		
 		if (!videoElement.captioned) {
@@ -704,13 +717,16 @@ var captionator = {
 			if (DOMNode.hasAttribute("controls")) {
 				// Get heights of default control strip in various browsers
 				// There could be a way to measure this live but I haven't thought/heard of it yet...
-				if (navigator.userAgent.toLowerCase().indexOf("chrome") !== -1) {
+				var UA = navigator.userAgent.toLowerCase();
+				if (UA.indexOf("chrome") !== -1) {
 					controlHeight = 32;
-				} else if (navigator.userAgent.toLowerCase().indexOf("firefox") !== -1) {
+				} else if (UA.indexOf("opera") !== -1) {
+					controlHeight = 25;
+				} else if (UA.indexOf("firefox") !== -1) {
 					controlHeight = 28;
-				} else if (navigator.userAgent.toLowerCase().indexOf("ie9") !== -1) {
-					controlHeight = 31;
-				} else if (navigator.userAgent.toLowerCase().indexOf("safari") !== -1) {
+				} else if (UA.indexOf("ie 9") !== -1 || UA.indexOf("ipad") !== -1) {
+					controlHeight = 44;
+				} else if (UA.indexOf("safari") !== -1) {
 					controlHeight = 25;
 				}
 			}
@@ -722,6 +738,35 @@ var captionator = {
 				height: height,
 				controlHeight: controlHeight
 			};
+		};
+		
+		var nodeStyleHelper = function(DOMNode,position) {
+			try {
+				window.addEventListener("resize",function nodeStyleHelper(EventData) {
+					var videoMetrics = getVideoMetrics(videoElement);
+					if (position === "bottom") {
+						captionHeight = Math.ceil(videoMetrics.height * 0.15 < 30 ? 30 : videoMetrics.height * 0.15);
+						applyStyles(DOMNode,{
+							"width":			(videoMetrics.width - 40) + "px",
+							"height":			captionHeight + "px",
+							"left":				videoMetrics.left + "px",
+							"top":				(videoMetrics.top + videoMetrics.height) - (captionHeight + videoMetrics.controlHeight) + "px",
+							"fontSize":			(captionHeight <= 50 ? ((captionHeight * 0.7) / 96) * 72 : ((captionHeight * 0.3) / 96) * 72) + "pt",
+							"lineHeight":		(captionHeight <= 50 ? (captionHeight / 96) * 72 : ((captionHeight / 2) / 96) * 72) + "pt"
+						});
+					} else {
+						captionHeight = (videoMetrics.height * 0.1 < 20 ? 20 : videoMetrics.height * 0.1);
+						applyStyles(DOMNode,{
+							"width":			(videoMetrics.width - 40) + "px",
+							"minHeight":		captionHeight + "px",
+							"left":				videoMetrics.left + "px",
+							"top":				videoMetrics.top + "px",
+							"fontSize":			(captionHeight <= 50 ? ((captionHeight * 0.5) / 96) * 72 : ((captionHeight * 0.2) / 96) * 72) + "pt",
+							"lineHeight":		(captionHeight <= 50 ? (captionHeight / 96) * 72 : ((captionHeight / 2) / 96) * 72) + "pt"
+						});
+					}
+				},false);
+			} catch(Error) {}
 		};
 		
 		if (DOMNode instanceof HTMLElement && videoElement instanceof HTMLVideoElement) {
@@ -750,8 +795,11 @@ var captionator = {
 						"fontWeight":		"bold",
 						"textAlign":		"center",
 						"paddingLeft":		"20px",
-						"paddingRight":		"20px"
+						"paddingRight":		"20px",
+						"overflow":			"hidden"
 					});
+					
+					nodeStyleHelper(DOMNode,"bottom");
 					
 				break;
 				case "textaudiodesc":
@@ -779,9 +827,12 @@ var captionator = {
 						"fontWeight":		"lighter",
 						"textAlign":		"center",
 						"paddingLeft":		"20px",
-						"paddingRight":		"20px"
+						"paddingRight":		"20px",
+						"overflow":			"hidden"
 					});
-				
+					
+					nodeStyleHelper(DOMNode,"top");
+					
 				break;
 				case "chapters":
 				
