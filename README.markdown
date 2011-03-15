@@ -50,10 +50,10 @@ don't like captionator's inbuilt renderer:
 	
 (More on this below!)
 
-Multiple subtitles and containers
+Multiple subtitles and custom render functions
 ---------------------------------
 
-**Specifying containers**
+**Specifying a custom renderer**
 
 It's pretty straightforward to manage multiple enabled subtitle tracks. Take this set of track elements
 for example:
@@ -64,7 +64,7 @@ for example:
 
 In this case, the English subtitles are enabled by default. Unless you specify a custom renderer,
 Captionator will automatically generate as many separate containers as are required for enabled tracks, set up
-the relevant events and style
+the relevant events and styles.
 
 Should you wish to specify your own renderer, you can use the following syntax when calling `captionator.captionify`:
 
