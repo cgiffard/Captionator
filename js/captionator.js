@@ -393,7 +393,11 @@ var captionator = {
 		
 		[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
 			videoElement.addTrack = function(kind,label,language,cueDataArray) {
-				var allowedKinds = ["subtitles","captions","descriptions","captions","metadata"];
+				var allowedKinds = ["subtitles","captions","descriptions","captions","metadata", // WHATWG SPEC
+									"karaoke","lyrics","tickertext", // CAPTIONATOR TEXT EXTENSIONS
+									"audiodescription","commentary", // CAPTIONATOR AUDIO EXTENSIONS
+									"alternateangle","signlanguage"]; // CAPTIONATOR VIDEO EXTENSIONS
+				var textKinds = allowedKinds.slice(0,7);
 				var newTrack;
 				label = typeof(label) === "string" ? label : "";
 				language = typeof(language) === "string" ? language : "";
@@ -405,16 +409,32 @@ var captionator = {
 					throw captionator.createDOMException(12,"DOMException 12: SYNTAX_ERR: You must use a valid kind when creating a TimedTextTrack.","SYNTAX_ERR");
 				}
 				
-				newTrack = new captionator.TextTrack(kind,label,language,cueDataArray);
-				if (newTrack) {
-					if (!(videoElement.tracks instanceof Array)) {
-						videoElement.tracks = [];
-					}
+				if (textKinds.filter(function (currentKind){
+						return kind === currentKind ? true : false;
+					}).length) {
+					newTrack = new captionator.TextTrack(kind,label,language,cueDataArray);
+					if (newTrack) {
+						if (!(videoElement.tracks instanceof Array)) {
+							videoElement.tracks = [];
+						}
 					
-					videoElement.tracks.push(newTrack);
-					return newTrack;
+						videoElement.tracks.push(newTrack);
+						return newTrack;
+					} else {
+						return false;
+					}
 				} else {
-					return false;
+					newTrack = new captionator.MediaTrack(kind,label,language,src);
+					if (newTrack) {
+						if (!(videoElement.mediaTracks instanceof Array)) {
+							videoElement.mediaTracks = [];
+						}
+					
+						videoElement.mediaTracks.push(newTrack);
+						return newTrack;
+					} else {
+						return false;
+					}
 				}
 			};
 		});

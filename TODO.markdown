@@ -14,13 +14,14 @@ TODO
 * Positional collision detection for subtitles, preventing overlaps. How this should be implemented is a bit of a debate.
 * **DONE!** <strike>Enable use of external renderer</strike>
 * Fix `oncuechange` event firing
+* Implement `addCue` and `removeCue` events _properly_ for TextTrack objects
 
 ## Big Stuff ##
 
 * **80%** Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
 * Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
 * Implement animation options
-* Support audio and video tracks too (!!!)
+* Support audio and video tracks too (!!!) _(Underway)_
 * Include QUnit test framework & tests file
 * Externalise & modularise parser, possibly move WebSRT parser to a different file (this won't affect the published API at all)
 * Write a parser for TTML
