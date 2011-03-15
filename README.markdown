@@ -32,7 +32,7 @@ data as per the WHATWG specification.
 
 It's also easy to generate a transcript once a video has been captioned if required:
 	
-	var track = document.getElementsById("myVideo").tracks[0];
+	var track = document.getElementById("myVideo").tracks[0];
 	track.generateTranscript("#divForTranscript"); // Doesn't *have* to be a div, of course!
 
 If you've got specific requirements about which videos get captioned, and in what
@@ -89,7 +89,7 @@ You can find a demonstration of this feature in the example file.
 
 Captionator simply makes a new property (array) available through javascript on the HTMLVideoElement:
 
-	var myVideo = document.getElementsById("myVideo");
+	var myVideo = document.getElementById("myVideo");
 	var myTracks = myVideo.tracks;
 	
 By extension, getting access to the track you want is as simple as:
