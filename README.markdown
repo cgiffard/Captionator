@@ -18,7 +18,7 @@ find in older browsers (but they don't support HTML5 video anyway.)
   
 After including the library, adding captions to your video is pretty simple:
 
-	<script type="text/javascript" src="js/captions.js"></script>
+	<script type="text/javascript" src="js/captionator-min.js"></script>
 	<script type="text/javascript">
 		window.addEventListener("load",function(eventData) {
 			captionator.captionify();
@@ -111,9 +111,9 @@ Ergo, to access the property `language` from the third track, you'd use the foll
 	
 To enable or disable a track:
 
-	myVideo.tracks[2].mode = 2; // SHOWING
-	myVideo.tracks[2].mode = 1; // HIDDEN
-	myVideo.tracks[2].mode = 0; // OFF
+	myVideo.tracks[2].mode = captionator.TextTrack.SHOWING;
+	myVideo.tracks[2].mode = captionator.TextTrack.HIDDEN;
+	myVideo.tracks[2].mode = captionator.TextTrack.OFF;
 
 The track is then enabled/disabled when the video fires a `timeupdate` event, or when a track mode changes.
 You can update it immediately like so:

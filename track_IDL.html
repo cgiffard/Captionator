@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>HTML5 Video Closed Captioning Example</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" media="screen" href="css/captions.css"/>
+	</head>
+	<body>
+		<h1>HTML5 Video Closed Captioning Example</h1>
+		<p><em><strong>Note:</strong> the German and Japanese subtitles are machine translated.</em></p>
+		<video controls autobuffer id="videoTest" width="1024" height="464">
+			<source src="video/arduino.m4v" type="video/mp4" />
+			<source src="video/arduino.webm" type="video/webm" />
+			<source src="video/arduino.ogv" type="video/ogg" />
+			<track id="track1" kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" default />
+			<track id="track2" kind="captions" src="video/arduino-de.srt" type="text/srt" srclang="de" label="German Subtitles" />
+			<track id="track3" kind="captions" src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Japanese Subtitles" />
+		</video>
+		<h2>Media Controls</h2>
+		<div id="controls"></div>
+		<h2>Track Elements</h2>
+		<table id="idls" border="1">
+			<tr>
+			  <th>track id</th>
+			  <th>kind</th>
+			  <th>label</th>
+			  <th>src</th>
+			  <th>language</th>
+			  <th>readyState</th>
+			  <th>mode</th>
+			  <th>default</th>
+			</tr>
+		</table>
+		<script type="text/javascript" src="js/captionator.js"></script>
+		<!-- Initialize Captionator -->
+		<script type="text/javascript">
+			window.addEventListener("load",function(eventData) {
+				captionator.captionify();
+			},false);
+		</script>
+		<script type="text/javascript">
+			window.addEventListener("load",function(eventData) {
+				// Create Menu
+				var subtitleSelector = document.createElement("select");
+				document.getElementById("controls").appendChild(subtitleSelector);
+				
+				subtitleSelector.addEventListener("change",function(eventData) {
+					trackToEnable = parseInt(eventData.target.value,10);
+					document.getElementById("videoTest").tracks.forEach(function(track,index) {
+						if (index === trackToEnable) {
+							track.mode = captionator.TextTrack.SHOWING;
+						} else if (track.mode != captionator.TextTrack.OFF) {
+							track.mode = captionator.TextTrack.HIDDEN;
+						}
+					});
+				},false);
+				
+				document.getElementById("videoTest").tracks.forEach(function(track,index) {
+					var subtitleOption = document.createElement("option");
+					subtitleOption.innerHTML = track.label + " (" + track.language + ")";
+					subtitleOption.setAttribute("value",index);
+					subtitleSelector.appendChild(subtitleOption);
+				});
+				
+				// Fill table
+				var idls = document.getElementById("idls");
+				document.getElementById("videoTest").tracks.forEach(function(track,index) {
+				    var row = document.createElement("tr");
+					row.innerHTML = "<td>" + track.id + "</td><td>" + track.kind + "</td><td>" + track.label +
+					    "</td><td>" + track.src + "</td><td>" + track.language + "</td><td>" + track.readyState +
+					    "</td><td>" + track.mode + "</td><td>" + track.default + "</td>";
+				    idls.appendChild(row);
+				});
+			},false);
+		</script>
+	</body>
+</html>

@@ -22,19 +22,60 @@
 		<div id="transcript"></div>
 		<script type="text/javascript" src="js/captionator.js"></script>
 		<!-- 
-			The following code enables you to initialise Captionator:
+			The following sets up captionator and shows how you can use the
+			TextTrack API to pull out all the cues of a track into a transcript.
 		-->
 		<script type="text/javascript">
 			window.addEventListener("load",function(eventData) {
+				// initialise Captionator so functionality is available
 				captionator.captionify();
-				document.getElementsByTagName("video")[0].tracks[0].generateTranscript("#transcript");
+
+				// creates a transcript from a track's text data
+				generateTranscript = function(track, transcriptDestination) {
+					var captionID, captionData;
+
+					if (typeof(transcriptDestination) === "string") {
+						transcriptDestination = document.querySelectorAll(transcriptDestination)[0];
+					}
+
+					if (typeof(transcriptDestination) === "object") {
+						if (track.readyState === captionator.TextTrack.LOADED) {
+							transcriptDestination.innerHTML = "";
+							track.cues.forEach(function(cue) {
+								transcriptDestination.innerHTML += "<p class='transcriptLine'>" + cue.getCueAsSource() + "</p>";
+							});
+						} else {
+							if (track.readyState === captionator.TextTrack.LOADING) {
+								track.onload = function() {
+									generateTranscript(track, transcriptDestination);
+								}
+							} else { // ERROR or NONE
+								track.loadTrack(track.src,function() {
+									generateTranscript(track, transcriptDestination);
+								});
+							}
+						}
+					} else {
+						return false;
+					}
+				};
+				
+				// create transcript for any default loaded tracks
+				document.getElementById("videoTest").tracks.forEach(function(track) {
+					// enable track & update transcript
+					if (track.mode === captionator.TextTrack.SHOWING) {
+						generateTranscript(track, "#transcript");
+					}
+				});
+				
 			},false);
 		</script>
 		<!--
-			The following script is not part of Captionator, but demonstrates how you can use the API to enable and disable
-			caption tracks.
+			The following script demonstrates how you can use the API to enable and disable
+			caption tracks. This functionality should eventually be part of the @controls of the video.
 		-->
 		<script type="text/javascript">
+			// build the caption track switcher and callback for switching tracks
 			window.addEventListener("load",function(eventData) {
 				var subtitleSelector = document.createElement("select");
 				document.getElementById("controls").appendChild(subtitleSelector);
@@ -42,7 +83,14 @@
 				subtitleSelector.addEventListener("change",function(eventData) {
 					trackToEnable = parseInt(eventData.target.value,10);
 					document.getElementById("videoTest").tracks.forEach(function(track,index) {
-						track.mode = index === trackToEnable ? 2 : 0;
+						if (index === trackToEnable) {
+							// enable track & update transcript
+							track.mode = captionator.TextTrack.SHOWING;
+							generateTranscript(track, "#transcript");
+						} else if (track.mode != captionator.TextTrack.OFF) {
+							// hide showing tracks
+							track.mode = captionator.TextTrack.HIDDEN;
+						}
 					});
 				},false);
 				
@@ -52,6 +100,8 @@
 					subtitleOption.setAttribute("value",index);
 					subtitleSelector.appendChild(subtitleOption);
 				});
+				
+				
 			},false);
 		</script>
 	</body>

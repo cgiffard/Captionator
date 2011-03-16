@@ -72,27 +72,22 @@ var captionator = {
 		/**
 		 * @constructor
 		 */
-		captionator.TextTrack = function TextTrack(kind,label,language,trackSource) {
-			var NONE = 0;
-			var LOADING = 1;
-			var LOADED = 2;
-			var ERROR = 3;
-			var OFF = 0;
-			var HIDDEN = 1;
-			var SHOWING = 2;
+		captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,defaultValue) {
 			
 			this.onload = function () {};
 			this.onerror = function() {};
 			this.oncuechange = function() {};
 			
-			this.internalMode = OFF;
+			this.id = id || "";
+			this.internalMode = captionator.TextTrack.OFF;
 			this.cues = new captionator.TextTrackCueList(this);
 			this.activeCues = new captionator.ActiveTextTrackCueList(this.cues);
-			this.kind = kind || "caption";
+			this.kind = kind || "subtitles";
 			this.label = label || "";
 			this.language = language || "";
 			this.src = trackSource || "";
-			this.readyState = NONE;
+			this.readyState = captionator.TextTrack.NONE;
+			this.internalDefault = false;
 			
 			// Create getters and setters for mode
 			this.getMode = function() {
@@ -100,50 +95,66 @@ var captionator = {
 			};
 			
 			this.setMode = function(value) {
-				var allowedModes = [OFF,HIDDEN,SHOWING], containerID, container;
+				var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
 				if (allowedModes.indexOf(value) !== -1) {
 					if (value !== this.internalMode) {
 						this.internalMode = value;
 					
-						if (this.readyState === NONE && this.src.length > 0 && value > OFF) {
+						if (this.readyState === captionator.TextTrack.NONE && this.src.length > 0 && value > captionator.TextTrack.OFF) {
 							this.loadTrack(this.src,null);
 						}
 						
-						if (this.readyState === LOADED) {
+						if (this.readyState === captionator.TextTrack.LOADED) {
+							// make sure we are actually showing current captions
 							captionator.rebuildCaptions(this.videoNode);
 						}
 					
-						if (value === OFF || value === HIDDEN) {
+						if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
+							// actually hide the captions
 							containerID = "captionator-" + this.videoNode.id + "-" + this.kind + "-" + this.language;
 							container = document.getElementById(containerID);
 							if (container) {
 								container.parentNode.removeChild(container);
 							}
 						}
+						
+						if (value === captionator.TextTrack.OFF) {
+							// make sure the resource is reloaded next time
+							this.readyState = captionator.TextTrack.NONE;
+						}
 					}
 				} else {
-					throw new Error("Illegal mode value for track.");
+					throw new Error("Illegal mode value for track: " + value);
 				}
+			};
+			
+			// Create getter for default
+			this.getDefault = function() {
+				return this.internalDefault;
 			};
 			
 			if (Object.prototype.__defineGetter__) {
 				this.__defineGetter__("mode", this.getMode);
 				this.__defineSetter__("mode", this.setMode);
+				this.__defineGetter__("default", this.getDefault);
 			} else if (Object.defineProperty) {
 				Object.defineProperty(this,"mode",
 				   {get: this.getMode, set: this.setMode}
+				);
+				Object.defineProperty(this,"default",
+				   {get: this.getDefault}
 				);
 			}
 			
 			this.loadTrack = function(source, callback) {
 				var captionData, ajaxObject = new XMLHttpRequest();
-				if (this.readyState === LOADED) {
+				if (this.readyState === captionator.TextTrack.LOADED) {
 					if (callback instanceof Function) {
 						callback(captionData);
 					}
 				} else {
 					this.src = source;
-					this.readyState = LOADING;
+					this.readyState = captionator.TextTrack.LOADING;
 					
 					var currentTrackElement = this;
 					ajaxObject.open('GET', source, true);
@@ -151,7 +162,7 @@ var captionator = {
 						if (ajaxObject.readyState === 4) {
 							if(ajaxObject.status === 200) {
 								captionData = captionator.parseCaptions(ajaxObject.responseText);
-								currentTrackElement.readyState = LOADED;
+								currentTrackElement.readyState = captionator.TextTrack.LOADED;
 								captionator.rebuildCaptions(currentTrackElement.videoNode);
 								currentTrackElement.cues.loadCues(captionData);
 								currentTrackElement.onload();
@@ -166,34 +177,6 @@ var captionator = {
 						}
 					};
 					ajaxObject.send(null);
-				}
-			};
-			
-			this.generateTranscript = function(transcriptDestination) {
-				var captionID, captionData;
-				
-				if (typeof(transcriptDestination) === "string") {
-					transcriptDestination = document.querySelectorAll(transcriptDestination)[0];
-				}
-				
-				if (typeof(transcriptDestination) === "object") {
-					if (this.readyState === LOADED) {
-						this.cues.forEach(function(cue) {
-							transcriptDestination.innerHTML += "<p class='transcriptLine'>" + cue.getCueAsSource() + "</p>";
-						});
-					} else {
-						if (this.readyState === LOADING) {
-							this.onload = function() {
-								this.generateTranscript(transcriptDestination);
-							}
-						} else {
-							this.loadTrack(this.src,function() {
-								this.generateTranscript(transcriptDestination);
-							});
-						}
-					}
-				} else {
-					return false;
 				}
 			};
 			
@@ -213,6 +196,15 @@ var captionator = {
 				
 			};
 		};
+		// Define constants for TextTrack.readyState
+		captionator.TextTrack.NONE = 0;
+		captionator.TextTrack.LOADING = 1;
+		captionator.TextTrack.LOADED = 2;
+		captionator.TextTrack.ERROR = 3;
+		// Define constants for TextTrack.mode
+		captionator.TextTrack.OFF = 0;
+		captionator.TextTrack.HIDDEN = 1;
+		captionator.TextTrack.SHOWING = 2;
 		
 		// Define read-only properties
 		/**
@@ -354,7 +346,7 @@ var captionator = {
 			this.isActive = function() {
 				var currentTime = 0;
 				if (this.track instanceof captionator.TextTrack) {
-					if (this.track.mode === 2 && this.track.readyState === 2) {
+					if (this.track.mode === captionator.TextTrack.SHOWING && this.track.readyState === captionator.TextTrack.LOADED) {
 						try {
 							currentTime = this.track.videoNode.currentTime;
 							if (this.startTime <= currentTime && this.endTime >= currentTime) {
@@ -392,44 +384,46 @@ var captionator = {
 		}
 		
 		[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
-			videoElement.addTrack = function(kind,label,language,cueDataArray) {
+			videoElement.addTrack = function(id,kind,label,language,cueDataArray,defaultValue) {
 				var allowedKinds = ["subtitles","captions","descriptions","captions","metadata", // WHATWG SPEC
 									"karaoke","lyrics","tickertext", // CAPTIONATOR TEXT EXTENSIONS
 									"audiodescription","commentary", // CAPTIONATOR AUDIO EXTENSIONS
 									"alternateangle","signlanguage"]; // CAPTIONATOR VIDEO EXTENSIONS
 				var textKinds = allowedKinds.slice(0,7);
 				var newTrack;
+				id = typeof(id) == "string" ? id : "";
 				label = typeof(label) === "string" ? label : "";
 				language = typeof(language) === "string" ? language : "";
-				
+				defaultValue = typeof(defaultValue) === "boolean" ? defaultValue : "";
+
 				// If the kind isn't known, throw DOM syntax error exception
 				if (!allowedKinds.filter(function (currentKind){
 						return kind === currentKind ? true : false;
 					}).length) {
 					throw captionator.createDOMException(12,"DOMException 12: SYNTAX_ERR: You must use a valid kind when creating a TimedTextTrack.","SYNTAX_ERR");
 				}
-				
+
 				if (textKinds.filter(function (currentKind){
 						return kind === currentKind ? true : false;
 					}).length) {
-					newTrack = new captionator.TextTrack(kind,label,language,cueDataArray);
+					newTrack = new captionator.TextTrack(id,kind,label,language,cueDataArray);
 					if (newTrack) {
 						if (!(videoElement.tracks instanceof Array)) {
 							videoElement.tracks = [];
 						}
-					
+
 						videoElement.tracks.push(newTrack);
 						return newTrack;
 					} else {
 						return false;
 					}
 				} else {
-					newTrack = new captionator.MediaTrack(kind,label,language,src);
+					newTrack = new captionator.MediaTrack(id,kind,label,language,src);
 					if (newTrack) {
 						if (!(videoElement.mediaTracks instanceof Array)) {
 							videoElement.mediaTracks = [];
 						}
-					
+
 						videoElement.mediaTracks.push(newTrack);
 						return newTrack;
 					} else {
@@ -513,10 +507,12 @@ var captionator = {
 			var enabledDefaultTrack = false;
 			[].slice.call(videoElement.querySelectorAll("track"),0).forEach(function(trackElement) {
 				var trackObject = videoElement.addTrack(
+										trackElement.getAttribute("id"),
 										trackElement.getAttribute("kind"),
 										trackElement.getAttribute("label"),
 										trackElement.getAttribute("srclang").split("-")[0],
-										trackElement.getAttribute("src"));
+										trackElement.getAttribute("src"),
+										trackElement.getAttribute("default"));
 				
 				trackElement.track = trackObject;
 				trackObject.trackNode = trackElement;
@@ -535,7 +531,7 @@ var captionator = {
 				if ((trackObject.kind === "subtitles" || trackObject.kind === "captions") &&
 					(defaultLanguage === trackObject.language && options.enableCaptionsByDefault)) {
 					if (!trackList.filter(function(trackObject) {
-							if ((trackObject.kind === "captions" || trackObject.kind === "subtitles") && defaultLanguage === trackObject.language && trackObject.mode === 2) {
+							if ((trackObject.kind === "captions" || trackObject.kind === "subtitles") && defaultLanguage === trackObject.language && trackObject.mode === captionator.TextTrack.SHOWING) {
 								return true;
 							} else {
 								return false;
@@ -552,7 +548,7 @@ var captionator = {
 				
 				if (trackObject.kind === "chapters" && (defaultLanguage === trackObject.language)) {
 					if (!trackList.filter(function(trackObject) {
-							if (trackObject.kind === "chapters" && trackObject.mode === 2) {
+							if (trackObject.kind === "chapters" && trackObject.mode === captionator.TextTrack.SHOWING) {
 								return true;
 							} else {
 								return false;
@@ -568,7 +564,7 @@ var captionator = {
 				
 				if (trackObject.kind === "descriptions" && (options.enableDescriptionsByDefault === true) && (defaultLanguage === trackObject.language)) {
 					if (!trackList.filter(function(trackObject) {
-							if (trackObject.kind === "descriptions" && trackObject.mode === 2) {
+							if (trackObject.kind === "descriptions" && trackObject.mode === captionator.TextTrack.SHOWING) {
 								return true;
 							} else {
 								return false;
@@ -578,13 +574,13 @@ var captionator = {
 					}
 				}
 				
-				//  ↪ If there is a text track in the media element's list of text tracks whose text track mode is showing by default,
+				// If there is a text track in the media element's list of text tracks whose text track mode is showing by default,
 				// the user agent must furthermore change that text track's text track mode to hidden.
 				
 				if (trackEnabled === true) {
 					trackList.forEach(function(trackObject) {
-						if(trackObject.trackNode.hasAttribute("default") && trackObject.mode === 2) {
-							trackObject.mode = 1;
+						if(trackObject.trackNode.hasAttribute("default") && trackObject.mode === captionator.TextTrack.SHOWING) {
+							trackObject.mode = captionator.TextTrack.HIDDEN;
 						}
 					});
 				}
@@ -602,6 +598,7 @@ var captionator = {
 							}
 						}).length) {
 						trackEnabled = true;
+						trackObject.internalDefault = true;
 					}
 				}
 				
@@ -609,7 +606,7 @@ var captionator = {
 				// Let the text track mode be disabled.
 				
 				if (trackEnabled === true) {
-					trackObject.mode = 2; // SHOWING
+					trackObject.mode = captionator.TextTrack.SHOWING;
 				}
 			});
 			
@@ -646,7 +643,7 @@ var captionator = {
 		
 		// Work out what cues are showing...
 		trackList.forEach(function(track,trackIndex) {
-			if (track.mode === 2 && track.readyState === 2) {
+			if (track.mode === captionator.TextTrack.SHOWING && track.readyState === captionator.TextTrack.LOADED) {
 				containerID = "captionator-" + videoElement.id + "-" + track.kind + "-" + track.language;
 				if (track.containerObject) {
 					containerObject = track.containerObject;
@@ -655,10 +652,12 @@ var captionator = {
 				}
 
 				if (!containerObject) {
+					// visually display captions
 					containerObject = document.createElement("div");
 					containerObject.id = containerID;
 					document.body.appendChild(containerObject);
 					track.containerObject = containerObject;
+					// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
 					containerObject.setAttribute("aria-live","polite");
 					containerObject.setAttribute("aria-atomic","true");
 					captionator.styleContainer(containerObject,track.kind,track.videoNode);
@@ -666,6 +665,7 @@ var captionator = {
 					document.body.appendChild(containerObject);
 				}
 
+				// TODO(silvia): we should not really muck with the aria-describedby attribute of the video
 				if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
 					var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
 					videoElement.setAttribute("aria-describedby",existingValue + containerID);
@@ -796,6 +796,7 @@ var captionator = {
 				case "caption":
 				case "captions":
 				case "subtitle":
+				case "subtitles":
 					// Simple display, darkened rectangle, white or light text, down the bottom of the video container.
 					// This is basically the default style.
 					captionHeight = Math.ceil(videoMetrics.height * 0.15 < 30 ? 30 : videoMetrics.height * 0.15);
@@ -823,7 +824,9 @@ var captionator = {
 					
 				break;
 				case "textaudiodesc":
+				case "descriptions":
 					// No idea what this is supposed to look like...
+					// No visual display - only read out to screen reader
 				break;
 				case "karaoke":
 				case "lyrics":
@@ -867,6 +870,7 @@ var captionator = {
 				break;
 				default:
 					// Whoah, we didn't prepare for this one. Just class it with the requested name and move on.
+					// this should be "subtitles"
 			}
 			
 			if (DOMNode.className.indexOf("captionator-kind") === -1) {
