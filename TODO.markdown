@@ -25,6 +25,7 @@ TODO
 * Include QUnit test framework & tests file
 * Externalise & modularise parser, possibly move WebSRT parser to a different file (this won't affect the published API at all)
 * Write a parser for TTML
+* Support audio master elements (as in, caption audio as well as video)
 
 ## Bugs ##
 

@@ -101,6 +101,7 @@ Each track defines the following user accessible properties:
 * `label` - String - describes the track (in plain human language)
 * `language` - BCP47 language string which describes the track
 * `kind` - Resource type (one of `subtitles`, `captions`, `chapters`, `descriptions`, `metadata`.)
+* `readyState` - indicates whether the resource is loaded (one of NONE/0, LOADING/1, LOADED/2, or ERROR/3)
 * `mode` - the most important property (probably!) - determines whether captionator will fetch and render the resource.
 * `videoNode` - the HTMLVideoElement which the track relates to/extends. (Not in the WHATWG spec.)
 
@@ -131,6 +132,15 @@ The following lists options which you can pass to captionator:
 * `enableDescriptionsByDefault` (Boolean) - as above, except for `description` track types instead of `caption` or `subtitle` types.
 * `exportObjects` (Boolean) - instructs Captionator to export its own implementation of the TimedTextTrack objects (TextTrack, TextTrackCue, etc.) and their relevant constants into the global scope. Captionator ordinarily keeps these within its own object. You might find this useful for creating code which utilises `instanceof` conditionals, or creates instances of these objects itself, which you want to be native-TextTrack-support-agnostic. (Phew, what a mouthful.)
 * `renderer` (Function) - sets an alternative renderer for captions & subtitles. You can utilise the WHATWG TimedTextTrack specification to manipulate or get information about the tracks themselves.
+
+Video and Audio tracks (MediaTrack)
+-----------------------------------
+
+**NOTE: I haven't committed the version with support yet, but I'm providing the documentation as a sort of 'sneak peek'.**
+
+Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
+
+This is a documentation category in and of itself, so I've moved it to [MediaTrack.markdown](https://github.com/cgiffard/Captionator/blob/master/MediaTrack.markdown).
 
 
 New Features
