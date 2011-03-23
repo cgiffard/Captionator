@@ -5,6 +5,8 @@
 
 	https://github.com/cgiffard/Captionator
 */
+/*global HTMLVideoElement: true, NodeList: true, Audio: true, HTMLElement: true */
+/*jshint strict:true */
 
 var captionator = {
 	/*
@@ -72,7 +74,7 @@ var captionator = {
 		/**
 		 * @constructor
 		 */
-		captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,defaultValue) {
+		captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault) {
 			
 			this.onload = function () {};
 			this.onerror = function() {};
@@ -87,7 +89,7 @@ var captionator = {
 			this.language = language || "";
 			this.src = trackSource || "";
 			this.readyState = captionator.TextTrack.NONE;
-			this.internalDefault = false;
+			this.internalDefault = isDefault || false;
 			
 			// Create getters and setters for mode
 			this.getMode = function() {
@@ -172,6 +174,7 @@ var captionator = {
 								}
 							} else {
 								// Throw error handler, if defined
+								currentTrackElement.readyState = captionator.TextTrack.ERROR;
 								currentTrackElement.onerror();
 							}
 						}
@@ -375,26 +378,199 @@ var captionator = {
 			this.onexit = function() {};
 		};
 		
+		// Captionator media extensions
+		/**
+		 * @constructor
+		 */
+		captionator.MediaTrack = function MediaTrack(id,kind,label,language,src,type,isDefault) {
+			// This function is under construction!
+			// Eventually, the idea is that captionator will support timed video and audio tracks in addition to text subtitles
+			
+			var getSupportedMediaSource = function(sources) {
+				// Thanks Mr Pilgrim! :)
+				var supportedSource = sources
+					.filter(function(source,index) {
+						try {
+							var mediaElement = document.createElement(source.getAttribute("type").split("/").shift());
+							return !!(mediaElement.canPlayType && mediaElement.canPlayType(source.getAttribute("type")).replace(/no/, ''));
+						} catch(Error) {
+							// (The type fragment before the / probably didn't match to 'video' or 'audio'. So... we don't support it.)
+							return false;
+						}
+					})
+					.shift()
+					.getAttribute("src");
+				
+				return supportedSource;
+			};
+			
+			this.onload = function () {};
+			this.onerror = function() {};
+			
+			this.id = id || "";
+			this.internalMode = captionator.TextTrack.OFF;
+			this.internalMode = captionator.TextTrack.OFF;
+			this.mediaElement = null;
+			this.kind = kind || "audiodescription";
+			this.label = label || "";
+			this.language = language || "";
+			this.readyState = captionator.TextTrack.NONE;
+			this.type = type || "x/unknown"; // MIME type
+			this.mediaType = null;
+			this.src = "";
+			
+			if (typeof(src) === "string") {
+				this.src = src;
+			} else if (src instanceof NodeList) {
+				this.src = getSupportedMediaSource(src);
+			}
+			
+			if (this.type.match(/^video\//)) {
+				this.mediaType = "video";
+			} else if (this.type.match(/^audio\//)) {
+				this.mediaType = "audio";
+			}
+			
+			// Create getters and setters for mode
+			this.getMode = function() {
+				return this.internalMode;
+			};
+			
+			this.setMode = function(value) {
+				var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
+				if (allowedModes.indexOf(value) !== -1) {
+					if (value !== this.internalMode) {
+						this.internalMode = value;
+						
+						if (this.readyState === captionator.TextTrack.NONE && this.src.length > 0 && value > captionator.TextTrack.OFF) {
+							this.loadTrack(this.src,null);
+						}
+						
+						if (this.readyState === captionator.TextTrack.LOADED) {
+							this.showMediaElement();
+						}
+						
+						if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
+							this.hideMediaElement();
+						}
+					}
+				} else {
+					throw new Error("Illegal mode value for track.");
+				}
+			};
+			
+			if (Object.prototype.__defineGetter__) {
+				this.__defineGetter__("mode", this.getMode);
+				this.__defineSetter__("mode", this.setMode);
+			} else if (Object.defineProperty) {
+				Object.defineProperty(this,"mode",
+				   {get: this.getMode, set: this.setMode}
+				);
+			}
+			
+			this.hideMediaElement = function() {
+				if (this.mediaElement) {
+					if (!this.mediaElement.paused) {
+						this.mediaElement.pause();
+					}
+					
+					if (this.mediaElement instanceof HTMLVideoElement) {
+						this.mediaElement.style.display = "none";
+					}
+				}
+			};
+			
+			this.showMediaElement = function() {
+				if (this.mediaElement === null) {
+					this.buildMediaElement();
+				} else {
+					if (this.mediaElement instanceof HTMLVideoElement) {
+						this.mediaElement.style.display = "block";
+					}
+				}
+			};
+			
+			this.buildMediaElement = function() {
+				// Get media element type, work out what browser can support
+				// Captionator supports mimetypes of the format 'video/xxxxx' and 'audio/xxxxx'
+				// and uses this to determine whether an Audio or Video object is created.
+				//console.log("building media element");
+				
+				// Create a video or audio element with appropriate options
+				// set up events for loading and handling playback
+				// Append to dom (depending on mode)
+				// style
+				// link to master media element
+				try {
+					if (this.type.match(/^video\//)) {
+						this.mediaElement = document.createElement("video");
+						this.mediaElement.className = "captionator-mediaElement-" + this.kind;
+						document.body.appendChild(this.mediaElement);
+						console.log(this);
+						console.log(this.videoNode);
+						captionator.styleNode(this.mediaElement,this.kind,this.videoNode);
+						
+					} else if (this.type.match(/^audio\//)) {
+						this.mediaElement = new Audio();
+					}
+					
+					this.mediaElement.type = this.type;
+					this.mediaElement.src = this.src;
+					this.mediaElement.load();
+					this.mediaElement.trackObject = this;
+					this.readyState = captionator.TextTrack.LOADING;
+					var mediaElement = this.mediaElement;
+					
+					this.mediaElement.addEventListener("progress",function(eventData) {
+						mediaElement.trackObject.readyState = captionator.TextTrack.LOADING;
+					},false);
+					
+					this.mediaElement.addEventListener("canplaythrough",function(eventData) {
+						mediaElement.trackObject.readyState = captionator.TextTrack.LOADED;
+						mediaElement.trackObject.onload.call(mediaElement.trackObject);
+					},false);
+					
+					this.mediaElement.addEventListener("error",function(eventData) {
+						mediaElement.trackObject.readyState = captionator.TextTrack.ERROR;
+						mediaElement.trackObject.mode = captionator.TextTrack.OFF;
+						mediaElement.trackObject.mediaElement = null;
+						mediaElement.trackObject.onerror.call(mediaElement.trackObject,eventData);
+					},false);
+					
+				} catch(Error) {
+					console.log("error or some shit yo ",Error);
+					this.readyState = captionator.TextTrack.ERROR;
+					this.mode = captionator.TextTrack.OFF;
+					this.mediaElement = null;
+					this.onerror.call(this,Error);
+				}
+			};
+			
+			this.buildMediaElement();
+		};
+		
 		// if requested by options, export the object types
 		if (options.exportObjects) {
 			window.TextTrack = captionator.TextTrack;
 			window.TextTrackCueList = captionator.TextTrackCueList;
 			window.ActiveTextTrackCueList = captionator.ActiveTextTrackCueList;
 			window.TextTrackCue = captionator.TextTrackCue;
+			window.MediaTrack = captionator.MediaTrack;
 		}
 		
 		[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
-			videoElement.addTrack = function(id,kind,label,language,cueDataArray,defaultValue) {
+			videoElement.addTrack = function(id,kind,label,language,src,type,isDefault) {
 				var allowedKinds = ["subtitles","captions","descriptions","captions","metadata", // WHATWG SPEC
 									"karaoke","lyrics","tickertext", // CAPTIONATOR TEXT EXTENSIONS
 									"audiodescription","commentary", // CAPTIONATOR AUDIO EXTENSIONS
-									"alternateangle","signlanguage"]; // CAPTIONATOR VIDEO EXTENSIONS
+									"alternate","signlanguage"]; // CAPTIONATOR VIDEO EXTENSIONS
+				
 				var textKinds = allowedKinds.slice(0,7);
 				var newTrack;
-				id = typeof(id) == "string" ? id : "";
+				id = typeof(id) === "string" ? id : "";
 				label = typeof(label) === "string" ? label : "";
 				language = typeof(language) === "string" ? language : "";
-				defaultValue = typeof(defaultValue) === "boolean" ? defaultValue : "";
+				isDefault = typeof(isDefault) === "boolean" ? isDefault : false; // Is this track set as the default?
 
 				// If the kind isn't known, throw DOM syntax error exception
 				if (!allowedKinds.filter(function (currentKind){
@@ -406,7 +582,7 @@ var captionator = {
 				if (textKinds.filter(function (currentKind){
 						return kind === currentKind ? true : false;
 					}).length) {
-					newTrack = new captionator.TextTrack(id,kind,label,language,cueDataArray);
+					newTrack = new captionator.TextTrack(id,kind,label,language,src);
 					if (newTrack) {
 						if (!(videoElement.tracks instanceof Array)) {
 							videoElement.tracks = [];
@@ -418,7 +594,7 @@ var captionator = {
 						return false;
 					}
 				} else {
-					newTrack = new captionator.MediaTrack(id,kind,label,language,src);
+					newTrack = new captionator.MediaTrack(id,kind,label,language,src,type,isDefault);
 					if (newTrack) {
 						if (!(videoElement.mediaTracks instanceof Array)) {
 							videoElement.mediaTracks = [];
@@ -506,13 +682,24 @@ var captionator = {
 			
 			var enabledDefaultTrack = false;
 			[].slice.call(videoElement.querySelectorAll("track"),0).forEach(function(trackElement) {
+				var sources = null;
+				//console.log(trackElement.getAttribute("kind"));
+				//console.log(trackElement.innerHTML);
+				if (trackElement.querySelectorAll("source").length > 0) {
+					sources = trackElement.querySelectorAll("source");
+					//console.log("found some sub-sources! ",sources);
+				} else {
+					sources = trackElement.getAttribute("src");
+				}
+				
 				var trackObject = videoElement.addTrack(
 										trackElement.getAttribute("id"),
 										trackElement.getAttribute("kind"),
 										trackElement.getAttribute("label"),
 										trackElement.getAttribute("srclang").split("-")[0],
-										trackElement.getAttribute("src"),
-										trackElement.getAttribute("default"));
+										sources,
+										trackElement.getAttribute("type"),
+										trackElement.hasAttribute("default")); // (Christopher) I think we can get away with this given it's a boolean attribute anyway
 				
 				trackElement.track = trackObject;
 				trackObject.trackNode = trackElement;
@@ -625,21 +812,42 @@ var captionator = {
 				} else {
 					captionator.rebuildCaptions(videoElement);
 				}
+				
+				captionator.synchroniseMediaElements(videoElement);
 			}, false);
+			
+			videoElement.addEventListener("play", function(eventData){
+				captionator.synchroniseMediaElements(videoElement);	
+			});
+			
+			videoElement.addEventListener("pause", function(eventData){
+				captionator.synchroniseMediaElements(videoElement);	
+			});
 		}
 		
 		return videoElement;
 	},
-	
-	
+	/*
+		captionator.rebuildCaptions(HTMLVideoElement videoElement)
+		
+		Loops through all the TextTracks for a given element and manages their display (including generation of container elements.)
+		
+		First parameter: HTMLVideoElement object with associated TextTracks
+		
+		RETURNS:
+		
+		Nothing.
+		
+	*/
 	"rebuildCaptions": function(videoElement) {
 		"use strict";
-		var trackList = videoElement.tracks;
+		var trackList = videoElement.tracks || [];
 		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
 		var currentTime = videoElement.currentTime;
 		var containerID = "captionator-unset"; // Hopefully you don't actually see this in your id attribute!
 		var containerObject = null;
 		var compositeCueHTML = "";
+		var cuesChanged = false;
 		
 		// Work out what cues are showing...
 		trackList.forEach(function(track,trackIndex) {
@@ -660,11 +868,11 @@ var captionator = {
 					// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
 					containerObject.setAttribute("aria-live","polite");
 					containerObject.setAttribute("aria-atomic","true");
-					captionator.styleContainer(containerObject,track.kind,track.videoNode);
+					captionator.styleNode(containerObject,track.kind,track.videoNode);
 				} else if (!containerObject.parentNode) {
 					document.body.appendChild(containerObject);
 				}
-
+				
 				// TODO(silvia): we should not really muck with the aria-describedby attribute of the video
 				if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
 					var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
@@ -676,12 +884,21 @@ var captionator = {
 					compositeCueHTML += "<div class=\"captionator-cue\">" + cue.getCueAsSource() + "</div>";
 				});
 				
+				cuesChanged = false;
 				if (String(containerObject.innerHTML) !== compositeCueHTML) {
 					containerObject.innerHTML = compositeCueHTML;
+					cuesChanged = true;
 				}
 				
 				if (compositeCueHTML.length) {
-					containerObject.style.display = "block";
+					// Defeat a horrid Chrome 10 video bug
+					// http://stackoverflow.com/questions/5289854/chrome-10-custom-video-interface-problem/5400438#5400438
+					if (cuesChanged || containerObject.style.display === "none") {
+						containerObject.style.display = "block";
+						if (window.navigator.userAgent.toLowerCase().indexOf("chrome/10") > -1) {	
+							containerObject.style.backgroundColor = "rgba(0,0,0,0.5" + Math.random().toString().replace(".","") + ")";
+						}
+					}
 				} else {
 					containerObject.style.display = "none";
 				}
@@ -689,9 +906,67 @@ var captionator = {
 		});
 	},
 	/*
-		captionator.styleContainer(DOMNode, kind / role, videoElement, [boolean applyClassesOnly])
+		captionator.synchroniseMediaElements(HTMLVideoElement videoElement)
 		
-		Styles autogenerated caption containers according to the kind or 'role' (in the W3 spec) of the track.
+		Loops through all the MediaTracks for a given element and manages their display/audibility, synchronising them to the playback of the
+		master video element.
+		
+		This function also synchronises regular HTML5 media elements with a property of syncMaster with a value equal to the ID of the current video
+		element.
+		
+		First parameter: HTMLVideoElement object with associated MediaTracks
+		
+		RETURNS:
+		
+		Nothing.
+
+	*/
+	"synchroniseMediaElements": function(videoElement) {
+		"use strict";
+		var trackList = videoElement.mediaTracks || [];
+		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
+		var currentTime = videoElement.currentTime;
+		var synchronisationThreshold = 0.5; // How many seconds of drift will be tolerated before resynchronisation?
+		
+		var synchroniseElement = function(slave,master) {
+			if (master.seeking) {
+				slave.pause();
+			}
+			
+			if (slave.currentTime < master.currentTime - synchronisationThreshold || slave.currentTime > master.currentTime + synchronisationThreshold) {
+				slave.currentTime = master.currentTime;
+			}
+			
+			if (slave.paused && !master.paused) {
+				slave.play();
+			} else if (!slave.paused && master.paused) {
+				slave.pause();
+			}
+		};
+		
+		// Work out what cues are showing...
+		trackList.forEach(function(track,trackIndex) {
+			if (track.src.length && track.mode !== captionator.TextTrack.SHOWING) {
+				track.mode = captionator.TextTrack.SHOWING;
+			}
+			
+			if (track.mode === captionator.TextTrack.SHOWING && track.readyState === captionator.TextTrack.LOADED) {
+				synchroniseElement(track.mediaElement,videoElement);
+			}
+		});
+		
+		if (videoElement.id) {
+			[].slice.call(document.body.querySelectorAll("*[syncMaster=" + videoElement.id + "]"),0).forEach(function(mediaElement,index) {
+				if (mediaElement.tagName.toLowerCase() === "video" || mediaElement.tagName.toLowerCase() === "audio") {
+					synchroniseElement(mediaElement,videoElement);
+				}
+			});
+		}
+	},
+	/*
+		captionator.styleNode(DOMNode, kind / role, videoElement, [boolean applyClassesOnly])
+		
+		Styles autogenerated caption containers and media elements according to the kind or 'role' (in the W3 spec) of the track.
 		This function is not intended to allow easy application of arbitrary styles, but rather centralise all styling within
 		the script (enabling easy removal of styles for replacement with CSS classes if desired.)
 		
@@ -709,8 +984,9 @@ var captionator = {
 		Nothing.
 		
 	*/
-	"styleContainer": function(DOMNode, kind, videoElement, applyClassesOnly) {
+	"styleNode": function(DOMNode, kind, videoElement, applyClassesOnly) {
 		"use strict";
+		console.log("Styling node",arguments);
 		var applyStyles = function(StyleNode, styleObject) {
 			for (var styleName in styleObject) {
 				if ({}.hasOwnProperty.call(styleObject, styleName)) {
@@ -761,6 +1037,7 @@ var captionator = {
 		};
 		
 		var nodeStyleHelper = function(DOMNode,position) {
+			var captionHeight = 0;
 			try {
 				window.addEventListener("resize",function nodeStyleHelper(EventData) {
 					var videoMetrics = getVideoMetrics(videoElement);
@@ -866,6 +1143,34 @@ var captionator = {
 				break;
 				case "toolbar":
 					// Non-standard extension for multi-track media selection toolbars
+				
+				case "alternate":
+					// Alternate video angles
+					// This is a very crude way of keeping the controls visible indeed.
+					// Should perhaps switch the alternate video to be the controlling one when it's visible?
+					applyStyles(DOMNode,{
+						"display":			"block",
+						"position":			"absolute",
+						"width":			videoMetrics.width + "px",
+						"height":			(videoMetrics.height - videoMetrics.controlHeight) + "px",
+						"backgroundColor":	"black",
+						"left":				videoMetrics.left + "px",
+						"top":				videoMetrics.top + "px",
+					});
+					
+				break;
+				case "signlanguage":
+					console.log("seeing a sign language video!");
+					applyStyles(DOMNode,{
+						"display":			"block",
+						"position":			"absolute",
+						"maxWidth":			((videoMetrics.width/20)*6) + "px",
+						"maxHeight":		(((videoMetrics.height - videoMetrics.controlHeight)/20)*8) + "px",
+						"backgroundColor":	"black",
+						"left":				((videoMetrics.left + videoMetrics.width) - ((videoMetrics.width/20)*7)) + "px",
+						"top":				((videoMetrics.top + videoMetrics.height) - ((videoMetrics.height/20)*9)) + "px",
+						"border":			"solid white 2px"
+					});
 					
 				break;
 				default:

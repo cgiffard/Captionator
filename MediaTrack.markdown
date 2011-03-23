@@ -99,3 +99,17 @@ Captionator implements a number of different track types in extension to the one
 	_Video Only._ A video of a person providing a sign-language simultaneous translation of the content playing in the master media element.
 	
 	Captionator will render this video as picture-in-picture, with the video taking up approximately a quarter of the available area in the master video. For this reason, you should ensure that even at small sizes, your `signLanguage` track is clear and free of visual distraction, and that the person signing takes up as much of the frame as possible (as long as you can still see all the gestures!)
+
+## Browser Format Support ##
+
+"But what about Safari/IE? They don't support ogg/vorbis! And Firefox doesn't support MP3! I don't want to deliver my audio as enormous wav/PCM files!"
+
+Luckily for you, there's an alternate syntax:
+
+	<track kind="commentary" srclang="en" label="Director's Commentary">
+		<source src="audio/commentary.ogg" type="audio/ogg" />
+		<source src="audio/commentary.mp3" type="audio/mp3" />
+		<source src="audio/commentary.wav" type="audio/wav" />
+	</track>
+	
+This works exactly the same way that the `<source>` tags work when nested within regular HTML5 video and audio elements.
