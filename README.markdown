@@ -136,8 +136,6 @@ The following lists options which you can pass to captionator:
 Video and Audio tracks (MediaTrack)
 -----------------------------------
 
-**NOTE: I haven't committed the version with support yet, but I'm providing the documentation as a sort of 'sneak peek'.**
-
 Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
 
 This is a documentation category in and of itself, so I've moved it to [MediaTrack.markdown](https://github.com/cgiffard/Captionator/blob/master/MediaTrack.markdown).
