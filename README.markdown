@@ -1,9 +1,9 @@
 Captionator
 ===========
 
-**Simple closed-captioning polyfill for HTML5**
+**Simple closed-captioning polyfill for HTML5. Less than 5KB when gzipped! **
 
-**Implements WHATWG TimedTextTrack Specification! Works in Firefox 3+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
+**Implements WHATWG TimedTextTrack Specification! Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
 
 This basic polyfill aims to add support for the HTML5 video `<track>` element.
 
