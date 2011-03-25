@@ -18,10 +18,10 @@ TODO
 
 ## Big Stuff ##
 
-* **80%** Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
+* **DONE!** Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).
 * Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
 * Implement animation options
-* Support audio and video tracks too (!!!) _(Underway)_
+* **80%** Support audio and video tracks too (!!!)
 * Include QUnit test framework & tests file
 * Externalise & modularise parser, possibly move WebSRT parser to a different file (this won't affect the published API at all)
 * Write a parser for TTML

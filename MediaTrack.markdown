@@ -102,6 +102,8 @@ Captionator implements a number of different track types in extension to the one
 
 ## Browser Format Support ##
 
+**NOTE: Due to some browser parser limitations, this syntax doesn't work yet. It will, but in the meantime, if you need `<source>` support, use a synchronised element.**
+
 "But what about Safari/IE? They don't support ogg/vorbis! And Firefox doesn't support MP3! I don't want to deliver my audio as enormous wav/PCM files!"
 
 Luckily for you, there's an alternate syntax:
@@ -113,3 +115,15 @@ Luckily for you, there's an alternate syntax:
 	</track>
 	
 This works exactly the same way that the `<source>` tags work when nested within regular HTML5 video and audio elements.
+
+## Synchronised Media Elements ##
+
+Captionator also implements [proposal six from the Media Multitrack API](http://www.w3.org/WAI/PF/HTML/wiki/Media_Multitrack_Media_API#.286.29_Synchronize_separate_media_elements_through_attributes). You can set the attribute `syncMaster` on any video or audio you'd like to be synchronised to a video track managed by Captionator:
+
+	captionator.captionify(document.getElementByID("myVideo"));
+	...
+	<video id="mySynchronisedVideo" syncMaster="myVideo">
+		...
+	</video>
+
+That's all there is to it! Captionator will automatically pick up on any new elements you add.

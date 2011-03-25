@@ -1,5 +1,5 @@
 /* 
-	Captionator 0.2
+	Captionator 0.3a
 	Christopher Giffard, 2011
 	Share and enjoy
 
@@ -373,7 +373,6 @@ var captionator = {
 			}
 			
 			// Events defined by spec
-			
 			this.onenter = function() {};
 			this.onexit = function() {};
 		};
@@ -441,12 +440,11 @@ var captionator = {
 				if (allowedModes.indexOf(value) !== -1) {
 					if (value !== this.internalMode) {
 						this.internalMode = value;
-						
-						if (this.readyState === captionator.TextTrack.NONE && this.src.length > 0 && value > captionator.TextTrack.OFF) {
-							this.loadTrack(this.src,null);
+						if (value === captionator.TextTrack.HIDDEN && !this.mediaElement) {
+							this.buildMediaElement();
 						}
 						
-						if (this.readyState === captionator.TextTrack.LOADED) {
+						if (value === captionator.TextTrack.SHOWING) {
 							this.showMediaElement();
 						}
 						
@@ -481,9 +479,14 @@ var captionator = {
 			};
 			
 			this.showMediaElement = function() {
-				if (this.mediaElement === null) {
+				if (!this.mediaElement) {
 					this.buildMediaElement();
+					document.body.appendChild(this.mediaElement);
 				} else {
+					if (!this.mediaElement.parentNode) {
+						document.body.appendChild(this.mediaElement);
+					}
+					
 					if (this.mediaElement instanceof HTMLVideoElement) {
 						this.mediaElement.style.display = "block";
 					}
@@ -491,23 +494,10 @@ var captionator = {
 			};
 			
 			this.buildMediaElement = function() {
-				// Get media element type, work out what browser can support
-				// Captionator supports mimetypes of the format 'video/xxxxx' and 'audio/xxxxx'
-				// and uses this to determine whether an Audio or Video object is created.
-				//console.log("building media element");
-				
-				// Create a video or audio element with appropriate options
-				// set up events for loading and handling playback
-				// Append to dom (depending on mode)
-				// style
-				// link to master media element
 				try {
 					if (this.type.match(/^video\//)) {
 						this.mediaElement = document.createElement("video");
 						this.mediaElement.className = "captionator-mediaElement-" + this.kind;
-						document.body.appendChild(this.mediaElement);
-						console.log(this);
-						console.log(this.videoNode);
 						captionator.styleNode(this.mediaElement,this.kind,this.videoNode);
 						
 					} else if (this.type.match(/^audio\//)) {
@@ -538,15 +528,12 @@ var captionator = {
 					},false);
 					
 				} catch(Error) {
-					console.log("error or some shit yo ",Error);
 					this.readyState = captionator.TextTrack.ERROR;
 					this.mode = captionator.TextTrack.OFF;
 					this.mediaElement = null;
 					this.onerror.call(this,Error);
 				}
 			};
-			
-			this.buildMediaElement();
 		};
 		
 		// if requested by options, export the object types
@@ -683,11 +670,8 @@ var captionator = {
 			var enabledDefaultTrack = false;
 			[].slice.call(videoElement.querySelectorAll("track"),0).forEach(function(trackElement) {
 				var sources = null;
-				//console.log(trackElement.getAttribute("kind"));
-				//console.log(trackElement.innerHTML);
 				if (trackElement.querySelectorAll("source").length > 0) {
 					sources = trackElement.querySelectorAll("source");
-					//console.log("found some sub-sources! ",sources);
 				} else {
 					sources = trackElement.getAttribute("src");
 				}
@@ -929,28 +913,28 @@ var captionator = {
 		var synchronisationThreshold = 0.5; // How many seconds of drift will be tolerated before resynchronisation?
 		
 		var synchroniseElement = function(slave,master) {
-			if (master.seeking) {
-				slave.pause();
-			}
+			try {
+				if (master.seeking) {
+					slave.pause();
+				}
 			
-			if (slave.currentTime < master.currentTime - synchronisationThreshold || slave.currentTime > master.currentTime + synchronisationThreshold) {
-				slave.currentTime = master.currentTime;
-			}
+				if (slave.currentTime < master.currentTime - synchronisationThreshold || slave.currentTime > master.currentTime + synchronisationThreshold) {
+					slave.currentTime = master.currentTime;
+				}
 			
-			if (slave.paused && !master.paused) {
-				slave.play();
-			} else if (!slave.paused && master.paused) {
-				slave.pause();
+				if (slave.paused && !master.paused) {
+					slave.play();
+				} else if (!slave.paused && master.paused) {
+					slave.pause();
+				}
+			} catch(Error) {
+				// Probably tried to seek to an unavailable chunk of video
 			}
 		};
 		
 		// Work out what cues are showing...
 		trackList.forEach(function(track,trackIndex) {
-			if (track.src.length && track.mode !== captionator.TextTrack.SHOWING) {
-				track.mode = captionator.TextTrack.SHOWING;
-			}
-			
-			if (track.mode === captionator.TextTrack.SHOWING && track.readyState === captionator.TextTrack.LOADED) {
+			if (track.mode === captionator.TextTrack.SHOWING && track.readyState >= captionator.TextTrack.LOADING) {
 				synchroniseElement(track.mediaElement,videoElement);
 			}
 		});
@@ -986,7 +970,6 @@ var captionator = {
 	*/
 	"styleNode": function(DOMNode, kind, videoElement, applyClassesOnly) {
 		"use strict";
-		console.log("Styling node",arguments);
 		var applyStyles = function(StyleNode, styleObject) {
 			for (var styleName in styleObject) {
 				if ({}.hasOwnProperty.call(styleObject, styleName)) {
@@ -1094,7 +1077,8 @@ var captionator = {
 						"textAlign":		"center",
 						"paddingLeft":		"20px",
 						"paddingRight":		"20px",
-						"overflow":			"hidden"
+						"overflow":			"hidden",
+						"zIndex":			20
 					});
 					
 					nodeStyleHelper(DOMNode,"bottom");
@@ -1155,12 +1139,11 @@ var captionator = {
 						"height":			(videoMetrics.height - videoMetrics.controlHeight) + "px",
 						"backgroundColor":	"black",
 						"left":				videoMetrics.left + "px",
-						"top":				videoMetrics.top + "px",
+						"top":				videoMetrics.top + "px"
 					});
 					
 				break;
 				case "signlanguage":
-					console.log("seeing a sign language video!");
 					applyStyles(DOMNode,{
 						"display":			"block",
 						"position":			"absolute",
@@ -1168,7 +1151,7 @@ var captionator = {
 						"maxHeight":		(((videoMetrics.height - videoMetrics.controlHeight)/20)*8) + "px",
 						"backgroundColor":	"black",
 						"left":				((videoMetrics.left + videoMetrics.width) - ((videoMetrics.width/20)*7)) + "px",
-						"top":				((videoMetrics.top + videoMetrics.height) - ((videoMetrics.height/20)*9)) + "px",
+						"top":				((videoMetrics.top + videoMetrics.height) - ((videoMetrics.height/20)*11)) + "px",
 						"border":			"solid white 2px"
 					});
 					

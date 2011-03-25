@@ -151,6 +151,8 @@ New Features
 * Through the spec, supports dynamic subtitle manipulation (as demonstrated in the example file)
 * Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
 * Adaptively scales default subtitle UI to fit video
+* Supports `MediaTrack` tracks, with additional audio & video, picture in picture etc.
+* Supports synchronised media with the `syncMaster` attribute!
 
 Licence
 ----------------
