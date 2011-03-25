@@ -124,6 +124,11 @@
 						var subtitleOption = document.createElement("option");
 						subtitleOption.innerHTML = track.label + " (" + track.language + ")";
 						subtitleOption.setAttribute("value",index);
+						
+						if (track.mode === captionator.TextTrack.SHOWING) {
+							subtitleOption.setAttribute("selected","selected");
+						}
+						
 						subtitleSelector.appendChild(subtitleOption);
 					});
 					
