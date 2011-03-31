@@ -121,7 +121,8 @@ var captionator = {
 						}
 						
 						if (value === captionator.TextTrack.OFF) {
-							// make sure the resource is reloaded next time
+							// make sure the resource is reloaded next time (Is this correct behaviour?)
+							this.cues.length = 0; // Destroy existing cue data (bugfix)
 							this.readyState = captionator.TextTrack.NONE;
 						}
 					}
@@ -1088,7 +1089,9 @@ var captionator = {
 				case "descriptions":
 					// No idea what this is supposed to look like...
 					// No visual display - only read out to screen reader
-				break;
+					
+					// For the time being, using lyrics display.
+					
 				case "karaoke":
 				case "lyrics":
 					// Decided to put both of these together (they're basically the same thing, save for the bouncing ball!)
