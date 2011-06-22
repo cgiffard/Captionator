@@ -803,11 +803,11 @@ var captionator = {
 			
 			videoElement.addEventListener("play", function(eventData){
 				captionator.synchroniseMediaElements(videoElement);	
-			});
+			},false);
 			
 			videoElement.addEventListener("pause", function(eventData){
 				captionator.synchroniseMediaElements(videoElement);	
-			});
+			},false);
 		}
 		
 		return videoElement;
