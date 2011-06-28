@@ -1199,9 +1199,14 @@ var captionator = {
 				var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
 				var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
 				
-				if (subtitleParts[0].match(/^\d+$/ig)) {
+				// Trim off any blank lines (logically, should only be max. one, but loop to be sure)
+				while (!subtitleParts[0].replace(/\s+/ig,"").length && subtitleParts.length > 0) {
+					subtitleParts.shift();
+				}
+				
+				if (subtitleParts[0].match(/^\s*\d+\s*$/ig)) {
 					// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
-					id = String(subtitleParts.shift(0).split(/\s+/).join(""));
+					id = String(subtitleParts.shift().replace(/\s*/ig,""));
 				} else {
 					// We're not parsing a format with an ID prior to each caption like SRT or WebVTT
 					id = objectCount;
@@ -1209,9 +1214,9 @@ var captionator = {
 				
 				for (subtitlePartIndex = 0; subtitlePartIndex < subtitleParts.length; subtitlePartIndex ++) {
 					var timestamp = subtitleParts[subtitlePartIndex];
-					if (timestampMatch = SRTTimestampParser.exec(timestamp) ||
-						timestampMatch = SUBTimestampParser.exec(timestamp) ||
-						timestampMatch = SBVTimestampParser.exec(timestamp)) {
+					if ((timestampMatch = SRTTimestampParser.exec(timestamp)) ||
+						(timestampMatch = SUBTimestampParser.exec(timestamp)) ||
+						(timestampMatch = SBVTimestampParser.exec(timestamp))) {
 						
 						// WebVTT / SRT / SUB (VOBSub) / YouTube SBV style timestamp
 
@@ -1265,7 +1270,10 @@ var captionator = {
 									fileType = "WebVTT";
 									return false;
 								} else {
-									return true;
+									if (lineGroup.replace(/\s*/ig,"").length) {
+										return true;
+									}
+									return false;
 								}
 							})
 							.map(parseCaptionChunk);
