@@ -7,6 +7,7 @@
 */
 /*global HTMLVideoElement: true, NodeList: true, Audio: true, HTMLElement: true */
 /*jshint strict:true */
+/*Tab indented, tab = 4 spaces*/
 
 var captionator = {
 	/*
@@ -17,16 +18,16 @@ var captionator = {
 		"use strict";
 		try {
 			// Deliberately cause a DOMException error
-	        document.querySelectorAll("div/[]");
-	    } catch(Error) {
+			document.querySelectorAll("div/[]");
+		} catch(Error) {
 			// Catch it and subclass it
 			/**
 			 * @constructor
 			 */
 			var CustomDOMException = function CustomDOMException(code,message,name){ this.code = code; this.message = message; this.name = name; };
 			CustomDOMException.prototype = Error;
-	        return new CustomDOMException(code,message,name);
-	    }
+			return new CustomDOMException(code,message,name);
+		}
 	},
 	/*
 		captionator.captionify([selector string array | DOMElement array | selector string | singular dom element ],
@@ -142,10 +143,10 @@ var captionator = {
 				this.__defineGetter__("default", this.getDefault);
 			} else if (Object.defineProperty) {
 				Object.defineProperty(this,"mode",
-				   {get: this.getMode, set: this.setMode}
+					{get: this.getMode, set: this.setMode}
 				);
 				Object.defineProperty(this,"default",
-				   {get: this.getDefault}
+					{get: this.getDefault}
 				);
 			}
 			
@@ -369,7 +370,7 @@ var captionator = {
 				this.__defineGetter__("active", this.isActive);
 			} else if (Object.defineProperty) {
 				Object.defineProperty(this,"active",
-				   {get: this.isActive}
+					{get: this.isActive}
 				);
 			}
 			
@@ -463,7 +464,7 @@ var captionator = {
 				this.__defineSetter__("mode", this.setMode);
 			} else if (Object.defineProperty) {
 				Object.defineProperty(this,"mode",
-				   {get: this.getMode, set: this.setMode}
+					{get: this.getMode, set: this.setMode}
 				);
 			}
 			
@@ -1186,54 +1187,88 @@ var captionator = {
 	"parseCaptions": function(captionData) {
 		"use strict";
 		// Be liberal in what you accept from others...
+		var fileType = "";
 		if (captionData) {
+			var parseCaptionChunk = function parseCaptionChunk(subtitleElement,objectCount) {
+				var subtitleParts = subtitleElement.split(/\n/g);
+				var timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
+				var timestampMatch;
+
+				var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
+				var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
+				var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
+				var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
+				
+				if (subtitleParts[0].match(/^\d+$/ig)) {
+					// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
+					id = String(subtitleParts.shift(0).split(/\s+/).join(""));
+				} else {
+					// We're not parsing a format with an ID prior to each caption like SRT or WebVTT
+					id = objectCount;
+				}
+				
+				for (subtitlePartIndex = 0; subtitlePartIndex < subtitleParts.length; subtitlePartIndex ++) {
+					var timestamp = subtitleParts[subtitlePartIndex];
+					if (timestampMatch = SRTTimestampParser.exec(timestamp) ||
+						timestampMatch = SUBTimestampParser.exec(timestamp) ||
+						timestampMatch = SBVTimestampParser.exec(timestamp)) {
+						
+						// WebVTT / SRT / SUB (VOBSub) / YouTube SBV style timestamp
+
+						timeData = timestampMatch.slice(1);
+						
+						timeIn = 	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
+									parseInt((timeData[1]||0) * 60,10) +		// Minutes
+									parseInt((timeData[2]||0),10) +				// Seconds
+									parseFloat("0." + (timeData[3]||0),10);		// MS
+						
+						timeOut = 	parseInt((timeData[4]||0) * 60 * 60,10) +	// Hours
+									parseInt((timeData[5]||0) * 60,10) +		// Minutes
+									parseInt((timeData[6]||0),10) +				// Seconds
+									parseFloat("0." + (timeData[7]||0),10);		// MS
+						
+						if (timeData[8]) {
+							cueSettings = timeData[8];
+						}
+					
+					} else if (timestampMatch = GoogleTimestampParser.exec(timestamp)) {
+
+						// Google's proposed WebVTT timestamp style
+						timeData = timestampMatch.slice(1);
+						
+						timeIn = parseFloat(timeData[0],10);
+						timeOut = timeIn + parseFloat(timeData[1],10);
+
+						if (timeData[2]) {
+							cueSettings = timeData[2];
+						}
+
+					}
+					
+					// We've got the timestamp - return all the other unmatched lines as the raw subtitle data
+					subtitleParts = subtitleParts.slice(0,subtitlePartIndex).concat(subtitleParts.slice(subtitlePartIndex+1));
+					break;
+				}
+				
+				// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
+				html = subtitleParts.join("\n");
+				return new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
+			};
+
+			// Begin parsing --------------------
 			var subtitles = captionData
 							.replace(/\r\n/g,"\n")
 							.replace(/\r/g,"\n")
-							.split(/\n\n/g)
+							.split(/\n\n+/g)
 							.filter(function(lineGroup) {
-								if (lineGroup.match(/WEBVTT FILE/ig)) {
-									// This is useless - we just don't care as we'll be treating SRT and WebVTT the same anyway.
+								if (lineGroup.match(/^WEBVTT(\s*FILE)?/ig)) {
+									fileType = "WebVTT";
 									return false;
 								} else {
 									return true;
 								}
 							})
-							.map(function(subtitleElement) {
-								var subtitleParts = subtitleElement.split(/\n/g);
-								var timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
-								
-								if (subtitleParts[0].match(/^\s*\d+\s*$/ig)) {
-									// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
-									id = String(subtitleParts.shift(0).split(/\s+/).join(""));
-								}
-								
-								for (subtitlePartIndex = 0; subtitlePartIndex < subtitleParts.length; subtitlePartIndex ++) {
-									if (subtitleParts[subtitlePartIndex].match(/^\d{2}:\d{2}:\d{2}[\.\,]\d+/)) {
-										timeData = subtitleParts[subtitlePartIndex].split(/\s+/ig);
-										timeIn = parseFloat(((timeData[0].split(/[:\,\.]/ig)[0] * 60 * 60) +
-															(timeData[0].split(/[:\,\.]/ig)[1] * 60) +
-															parseInt(timeData[0].split(/[:\,\.]/ig)[2],10)) + "." +
-															parseInt(timeData[0].split(/[:\,\.]/ig)[3],10));
-										
-										timeOut = parseFloat(((timeData[2].split(/[:\,\.]/ig)[0] * 60 * 60) +
-															(timeData[2].split(/[:\,\.]/ig)[1] * 60) +
-															parseInt(timeData[2].split(/[:\,\.]/ig)[2],10)) + "." +
-															parseInt(timeData[2].split(/[:\,\.]/ig)[3],10));
-										
-										if (timeData.length >= 4) {
-											cueSettings = timeData.splice(3).join(" ");
-										}
-										
-										subtitleParts = subtitleParts.slice(0,subtitlePartIndex).concat(subtitleParts.slice(subtitlePartIndex+1));
-										break;
-									}
-								}
-								
-								// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
-								html = subtitleParts.join("\n");
-								return new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
-							});
+							.map(parseCaptionChunk);
 			
 			return subtitles;
 		} else {
