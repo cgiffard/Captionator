@@ -1,5 +1,5 @@
 /* 
-	Captionator 0.3a
+	Captionator 0.4 [Stable]
 	Christopher Giffard, 2011
 	Share and enjoy
 
