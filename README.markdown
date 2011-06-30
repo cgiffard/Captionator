@@ -5,6 +5,8 @@ Captionator
 
 **Implements WHATWG TimedTextTrack Specification! Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
 
+**This is the `CaptionCrunch` build - a bleeding edge development branch with all the fruit - but which might not always work. Be warned! More info further down the page.**
+
 This basic polyfill aims to add support for the HTML5 video `<track>` element.
 
 It currently includes rudimentary support for multiple language subtitle tracks,
@@ -151,6 +153,17 @@ New Features
 * Adaptively scales default subtitle UI to fit video
 * Supports `MediaTrack` tracks, with additional audio & video, picture in picture etc.
 * Supports synchronised media with the `syncMaster` attribute!
+
+CaptionCrunch
+----------------
+**CaptionCrunch** is the development branch for Captionator 0.5. CaptionCrunch will support the latest changes to the TimedTextTrack JS API, and integrate whatever possible from the assistive media components of the specification.
+
+The most important part of the release is complete WebVTT support, with a compliant renderer respecting WebVTT cue settings and render options, not just the capacity to parse WebVTT.
+
+Feel free to submit patches and help get this thing over the line!
+
+* [CaptionCrunch issue list](https://github.com/cgiffard/Captionator/issues?sort=created&direction=desc&state=open&page=1&milestone=2)
+* [CaptionCrunch branch @ github](https://github.com/cgiffard/Captionator/tree/captioncrunch)
 
 Licence
 ----------------

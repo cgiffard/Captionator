@@ -1,5 +1,5 @@
 /* 
-	Captionator 0.3a
+	Captionator 0.5a [CaptionCrunch]
 	Christopher Giffard, 2011
 	Share and enjoy
 
@@ -1235,22 +1235,25 @@ var captionator = {
 		"use strict";
 		// Be liberal in what you accept from others...
 		var fileType = "";
+		
+		// Set up timestamp parsers
+		var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
+		var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
+		var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
+		var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
+		var LRCTimestampParser		= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/ig;
+
 		if (captionData) {
 			var parseCaptionChunk = function parseCaptionChunk(subtitleElement,objectCount) {
 				var subtitleParts = subtitleElement.split(/\n/g);
 				var timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
 				var timestampMatch;
-
-				var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-				var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-				var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
-				var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-
+				
 				// Trim off any blank lines (logically, should only be max. one, but loop to be sure)
 				while (!subtitleParts[0].replace(/\s+/ig,"").length && subtitleParts.length > 0) {
 					subtitleParts.shift();
 				}
-
+				
 				if (subtitleParts[0].match(/^\s*\d+\s*$/ig)) {
 					// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
 					id = String(subtitleParts.shift().replace(/\s*/ig,""));
