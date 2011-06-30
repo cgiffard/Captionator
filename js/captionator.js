@@ -881,6 +881,10 @@ var captionator = {
 					// http://stackoverflow.com/questions/5289854/chrome-10-custom-video-interface-problem/5400438#5400438
 					if (cuesChanged || containerObject.style.display === "none") {
 						containerObject.style.display = "block";
+
+						// Refresh font sizing etc
+						captionator.styleNode(containerObject,track.kind,track.videoNode);
+						
 						if (window.navigator.userAgent.toLowerCase().indexOf("chrome/10") > -1) {	
 							containerObject.style.backgroundColor = "rgba(0,0,0,0.5" + Math.random().toString().replace(".","") + ")";
 						}
@@ -1022,32 +1026,79 @@ var captionator = {
 		};
 		
 		var nodeStyleHelper = function(DOMNode,position) {
-			var captionHeight = 0;
+			var captionHeight = 0, captionLength = 0, videoMetrics, baseFontSize, baseLineHeight, captionTop;
+			var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
+			var minimumLineHeight = 14;				// As above, in points
+			var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
+			var captionHeightPercentage = 13;		// Caption height defaults to 10% of video height
+			var captionHeightMaxPercentage = 33;	// Captions will not occupy more than a third of the video (vertically)
 			try {
-				window.addEventListener("resize",function nodeStyleHelper(EventData) {
-					var videoMetrics = getVideoMetrics(videoElement);
-					if (position === "bottom") {
-						captionHeight = Math.ceil(videoMetrics.height * 0.15 < 30 ? 30 : videoMetrics.height * 0.15);
+				var styleHelper = function nodeStyleHelper(EventData) {
+					videoMetrics = getVideoMetrics(videoElement);
+					baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
+					baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
+					baseLineHeight = Math.floor(baseFontSize * 1.3);
+					baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
+					captionHeight = Math.ceil(videoMetrics.height * (captionHeightPercentage/100));
+
+					// Get the combined length of all caption text in the container
+					if (DOMNode.textContent) {
+						captionLength = DOMNode.textContent.replace(/\s\s+/ig," ").length;
+					} else if (DOMNode.innerText) {
+						captionLength = DOMNode.innerText.replace(/\s\s+/ig," ").length;
+					}
+
+					captionHeight = Math.ceil(videoMetrics.height * (captionHeightPercentage/100));
+					captionTop = videoMetrics.top + videoMetrics.height;
+					captionTop = position === "bottom" ? captionTop - (captionHeight + videoMetrics.controlHeight) : videoMetrics.top;
+
+					applyStyles(DOMNode,{
+						"width":			(videoMetrics.width - 40) + "px",
+						"height":			captionHeight + "px",
+						"left":				videoMetrics.left + "px",
+						"top":				captionTop + "px",
+						"fontSize":			baseFontSize + "pt",
+						"lineHeight":		baseLineHeight + "pt"
+					});
+
+					// Clean up - set line height to caption height in the case of a single line,
+					// or increase caption height to accommodate larger captions
+
+					// This post-style restyle is somewhat hacky, and I'd prefer to calculate whether overflow is going to occur
+					// before styling the first time - but this renderer is going to be replaced shortly so it's not really worth
+					// spending huge amounts of time on...
+					if (DOMNode.scrollHeight > captionHeight) {
+						var tempMaxCaptionHeight = Math.ceil((captionHeightMaxPercentage/100)*videoMetrics.height);
+						captionHeight = DOMNode.scrollHeight <= tempMaxCaptionHeight ? DOMNode.scrollHeight : tempMaxCaptionHeight;
+						captionTop = videoMetrics.top + videoMetrics.height;
+						captionTop = position === "bottom" ? captionTop - (captionHeight + videoMetrics.controlHeight) : videoMetrics.top;
 						applyStyles(DOMNode,{
-							"width":			(videoMetrics.width - 40) + "px",
-							"height":			captionHeight + "px",
-							"left":				videoMetrics.left + "px",
-							"top":				(videoMetrics.top + videoMetrics.height) - (captionHeight + videoMetrics.controlHeight) + "px",
-							"fontSize":			(captionHeight <= 50 ? ((captionHeight * 0.7) / 96) * 72 : ((captionHeight * 0.3) / 96) * 72) + "pt",
-							"lineHeight":		(captionHeight <= 50 ? (captionHeight / 96) * 72 : ((captionHeight / 2) / 96) * 72) + "pt"
+							"height":	captionHeight + "px",
+							"top":		captionTop + "px"
 						});
 					} else {
-						captionHeight = (videoMetrics.height * 0.1 < 20 ? 20 : videoMetrics.height * 0.1);
-						applyStyles(DOMNode,{
-							"width":			(videoMetrics.width - 40) + "px",
-							"minHeight":		captionHeight + "px",
-							"left":				videoMetrics.left + "px",
-							"top":				videoMetrics.top + "px",
-							"fontSize":			(captionHeight <= 50 ? ((captionHeight * 0.5) / 96) * 72 : ((captionHeight * 0.2) / 96) * 72) + "pt",
-							"lineHeight":		(captionHeight <= 50 ? (captionHeight / 96) * 72 : ((captionHeight / 2) / 96) * 72) + "pt"
+						// Calculate the height of all the cues inside the container - and stretch out the line height to position
+						// them all equally in vertical space
+						var compositeHeight = 0;
+						Array.prototype.slice.call(DOMNode.childNodes,0).forEach(function(node) {
+							compositeHeight += node.offsetHeight;
 						});
+
+						if (compositeHeight < (captionHeight * 0.9)) {
+							baseLineHeight = baseLineHeight + (((captionHeight-compositeHeight)/96)*72);
+							applyStyles(DOMNode,{
+								"lineHeight":	baseLineHeight + "pt"
+							});
+						}
 					}
-				},false);
+
+				};
+
+				if (!DOMNode.resizeHelper) {
+					DOMNode.resizeHelper = window.addEventListener("resize",styleHelper,false);
+				}
+
+				styleHelper();
 			} catch(Error) {}
 		};
 		
@@ -1070,8 +1121,6 @@ var captionator = {
 						"backgroundColor":	"rgba(0,0,0,0.5)",
 						"left":				videoMetrics.left + "px",
 						"top":				(videoMetrics.top + videoMetrics.height) - (captionHeight + videoMetrics.controlHeight) + "px",
-						"fontSize":			(captionHeight <= 50 ? ((captionHeight * 0.7) / 96) * 72 : ((captionHeight * 0.3) / 96) * 72) + "pt",
-						"lineHeight":		(captionHeight <= 50 ? (captionHeight / 96) * 72 : ((captionHeight / 2) / 96) * 72) + "pt",
 						"color":			"white",
 						"textShadow":		"black 0px 0px 5px",
 						"fontFamily":		"Helvetica, Arial, sans-serif",
@@ -1106,8 +1155,6 @@ var captionator = {
 						"backgroundColor":	"rgba(0,0,0,0.5)",
 						"left":				videoMetrics.left + "px",
 						"top":				videoMetrics.top + "px",
-						"fontSize":			(captionHeight <= 50 ? ((captionHeight * 0.5) / 96) * 72 : ((captionHeight * 0.2) / 96) * 72) + "pt",
-						"lineHeight":		(captionHeight <= 50 ? (captionHeight / 96) * 72 : ((captionHeight / 2) / 96) * 72) + "pt",
 						"color":			"gold",
 						"fontStyle":		"oblique",
 						"textShadow":		"black 0px 0px 5px",
@@ -1198,12 +1245,12 @@ var captionator = {
 				var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 				var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
 				var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-				
+
 				// Trim off any blank lines (logically, should only be max. one, but loop to be sure)
 				while (!subtitleParts[0].replace(/\s+/ig,"").length && subtitleParts.length > 0) {
 					subtitleParts.shift();
 				}
-				
+
 				if (subtitleParts[0].match(/^\s*\d+\s*$/ig)) {
 					// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
 					id = String(subtitleParts.shift().replace(/\s*/ig,""));
