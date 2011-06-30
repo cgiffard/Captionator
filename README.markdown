@@ -17,15 +17,17 @@ It is designed to be js-library independent (but I might port it to jQuery later
 as the raw DOM is chunky indeed.) It currently works in browsers which offer support
 for HTML5 video, and relies on some JavaScript (ECMAScript 5) features you won't
 find in older browsers (but they don't support HTML5 video anyway.)
-  
+
 After including the library, adding captions to your video is pretty simple:
 
-	<script type="text/javascript" src="js/captionator-min.js"></script>
-	<script type="text/javascript">
-		window.addEventListener("load",function(eventData) {
-			captionator.captionify();
-		});
-	</script>
+```html
+<script type="text/javascript" src="js/captionator-min.js"></script>
+<script type="text/javascript">
+	window.addEventListener("load",function(eventData) {
+		captionator.captionify();
+	});
+</script>
+```
 
 This will not only caption your video (this example will caption every element on 
 the page with Timed Text Tracks available to it,) but it will also provide a `.tracks`
@@ -33,14 +35,18 @@ property on your video element(s) - which you can use to dynamically manipulate 
 data as per the WHATWG specification.
 
 It's also easy to generate a transcript once a video has been captioned if required:
-	
-	var track = document.getElementById("myVideo").tracks[0];
-	track.generateTranscript("#divForTranscript"); // Doesn't *have* to be a div, of course!
+
+```javascript
+var track = document.getElementById("myVideo").tracks[0];
+track.generateTranscript("#divForTranscript"); // Doesn't *have* to be a div, of course!
+```
 
 If you've got specific requirements about which videos get captioned, and in what
 language(s), there are some extra options:
 
-	captionator.captionify(videoElementsToCaption,defaultLanguage,options);
+```javascript
+captionator.captionify(videoElementsToCaption,defaultLanguage,options)
+```
 
 The first parameter can be an array of selectors or DOMElements, or a single selector
 string or DOMElement. The second parameter is a language string.
@@ -48,8 +54,10 @@ string or DOMElement. The second parameter is a language string.
 You can use the options parameter to specify your own render function for captions, if you
 don't like captionator's inbuilt renderer:
 
-	captionator.captionify(["#yourVideoElement1","#yourVideoElement2"],"de",{ renderer: myFunction });
-	
+```javascript
+captionator.captionify(["#yourVideoElement1","#yourVideoElement2"],"de",{ renderer: myFunction });
+```
+
 (More on this below!)
 
 Multiple subtitles and custom render functions
@@ -60,9 +68,11 @@ Multiple subtitles and custom render functions
 It's pretty straightforward to manage multiple enabled subtitle tracks. Take this set of track elements
 for example:
 
-	<track kind="captions" src="subs/english-subs.srt" srclang="en" label="English Subtitles" default />
-	<track kind="captions" src="subs/german-subs.srt" srclang="de" label="German Subtitles" />
-	<track kind="captions" src="subs/japanese-subs.srt" srclang="ja" label="Japanese Subtitles" />
+```html
+<track kind="captions" src="subs/english-subs.srt" srclang="en" label="English Subtitles" default />
+<track kind="captions" src="subs/german-subs.srt" srclang="de" label="German Subtitles" />
+<track kind="captions" src="subs/japanese-subs.srt" srclang="ja" label="Japanese Subtitles" />
+```
 
 In this case, the English subtitles are enabled by default. Unless you specify a custom renderer,
 Captionator will automatically generate as many separate containers as are required for enabled tracks, set up
@@ -70,11 +80,13 @@ the relevant events and styles.
 
 Should you wish to specify your own renderer, you can use the following syntax when calling `captionator.captionify`:
 
-	captionator.captionify(null,null,{
-		"renderer": function(yourHTMLVideoElement) {
-			...
-		}
-	});
+```javascript
+captionator.captionify(null,null,{
+	"renderer": function(yourHTMLVideoElement) {
+		...
+	}
+});
+```
 
 The renderer function you define is executed, and passed the HTMLVideoElement whenever it fires a
 `timeupdate` event. You can use the `TextTrack.activeCues` to determine what cues should be displayed at any given time.
@@ -91,13 +103,17 @@ You can find a demonstration of this feature in the example file.
 
 Captionator simply makes a new property (array) available through javascript on the HTMLVideoElement:
 
-	var myVideo = document.getElementById("myVideo");
-	var myTracks = myVideo.tracks;
-	
+```javascript
+var myVideo = document.getElementById("myVideo");
+var myTracks = myVideo.tracks;
+```
+
 By extension, getting access to the track you want is as simple as:
 
-	var firstSubtitleTrack = myVideo.tracks[0];
-	
+```javascript
+var firstSubtitleTrack = myVideo.tracks[0];
+```
+
 Each track defines the following user accessible properties:
 
 * `label` - String - describes the track (in plain human language)
@@ -109,18 +125,24 @@ Each track defines the following user accessible properties:
 
 Ergo, to access the property `language` from the third track, you'd use the following code:
 
-	var thirdTrackLanguage = myVideo.tracks[2].language;
-	
+```javascript
+var thirdTrackLanguage = myVideo.tracks[2].language;
+```
+
 To enable or disable a track:
 
-	myVideo.tracks[2].mode = captionator.TextTrack.SHOWING;
-	myVideo.tracks[2].mode = captionator.TextTrack.HIDDEN;
-	myVideo.tracks[2].mode = captionator.TextTrack.OFF;
+```javascript
+myVideo.tracks[2].mode = captionator.TextTrack.SHOWING;
+myVideo.tracks[2].mode = captionator.TextTrack.HIDDEN;
+myVideo.tracks[2].mode = captionator.TextTrack.OFF;
+```
 
 The track is then enabled/disabled when the video fires a `timeupdate` event, or when a track mode changes.
 You can update it immediately like so:
 
-	captionator.rebuildCaptions(myVideo);
+```javascript
+captionator.rebuildCaptions(myVideo);
+```
 
 (Where `myVideo` is an instance of a captioned HTMLVideoElement)
 
