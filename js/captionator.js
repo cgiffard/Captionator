@@ -1025,197 +1025,10 @@ var captionator = {
 			};
 		};
 		
-		var nodeStyleHelper = function(DOMNode,position) {
-			var captionHeight = 0, captionLength = 0, videoMetrics, baseFontSize, baseLineHeight, captionTop;
-			var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
-			var minimumLineHeight = 14;				// As above, in points
-			var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
-			var captionHeightPercentage = 13;		// Caption height defaults to 10% of video height
-			var captionHeightMaxPercentage = 33;	// Captions will not occupy more than a third of the video (vertically)
-			try {
-				var styleHelper = function nodeStyleHelper(EventData) {
-					videoMetrics = getVideoMetrics(videoElement);
-					baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
-					baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
-					baseLineHeight = Math.floor(baseFontSize * 1.3);
-					baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
-					captionHeight = Math.ceil(videoMetrics.height * (captionHeightPercentage/100));
-
-					// Get the combined length of all caption text in the container
-					if (DOMNode.textContent) {
-						captionLength = DOMNode.textContent.replace(/\s\s+/ig," ").length;
-					} else if (DOMNode.innerText) {
-						captionLength = DOMNode.innerText.replace(/\s\s+/ig," ").length;
-					}
-
-					captionHeight = Math.ceil(videoMetrics.height * (captionHeightPercentage/100));
-					captionTop = videoMetrics.top + videoMetrics.height;
-					captionTop = position === "bottom" ? captionTop - (captionHeight + videoMetrics.controlHeight) : videoMetrics.top;
-
-					applyStyles(DOMNode,{
-						"width":			(videoMetrics.width - 40) + "px",
-						"height":			captionHeight + "px",
-						"left":				videoMetrics.left + "px",
-						"top":				captionTop + "px",
-						"fontSize":			baseFontSize + "pt",
-						"lineHeight":		baseLineHeight + "pt"
-					});
-
-					// Clean up - set line height to caption height in the case of a single line,
-					// or increase caption height to accommodate larger captions
-
-					// This post-style restyle is somewhat hacky, and I'd prefer to calculate whether overflow is going to occur
-					// before styling the first time - but this renderer is going to be replaced shortly so it's not really worth
-					// spending huge amounts of time on...
-					if (DOMNode.scrollHeight > captionHeight) {
-						var tempMaxCaptionHeight = Math.ceil((captionHeightMaxPercentage/100)*videoMetrics.height);
-						captionHeight = DOMNode.scrollHeight <= tempMaxCaptionHeight ? DOMNode.scrollHeight : tempMaxCaptionHeight;
-						captionTop = videoMetrics.top + videoMetrics.height;
-						captionTop = position === "bottom" ? captionTop - (captionHeight + videoMetrics.controlHeight) : videoMetrics.top;
-						applyStyles(DOMNode,{
-							"height":	captionHeight + "px",
-							"top":		captionTop + "px"
-						});
-					} else {
-						// Calculate the height of all the cues inside the container - and stretch out the line height to position
-						// them all equally in vertical space
-						var compositeHeight = 0;
-						Array.prototype.slice.call(DOMNode.childNodes,0).forEach(function(node) {
-							compositeHeight += node.offsetHeight;
-						});
-
-						if (compositeHeight < (captionHeight * 0.9)) {
-							baseLineHeight = baseLineHeight + (((captionHeight-compositeHeight)/96)*72);
-							applyStyles(DOMNode,{
-								"lineHeight":	baseLineHeight + "pt"
-							});
-						}
-					}
-
-				};
-
-				if (!DOMNode.resizeHelper) {
-					DOMNode.resizeHelper = window.addEventListener("resize",styleHelper,false);
-				}
-
-				styleHelper();
-			} catch(Error) {}
-		};
+		// NEW RENDERER GOES HERE.......
 		
-		if (DOMNode instanceof HTMLElement && videoElement instanceof HTMLVideoElement) {
-			var videoMetrics = getVideoMetrics(videoElement);
-			var captionHeight = 0;
-			switch (kind) {
-				case "caption":
-				case "captions":
-				case "subtitle":
-				case "subtitles":
-					// Simple display, darkened rectangle, white or light text, down the bottom of the video container.
-					// This is basically the default style.
-					captionHeight = Math.ceil(videoMetrics.height * 0.15 < 30 ? 30 : videoMetrics.height * 0.15);
-					applyStyles(DOMNode,{
-						"display":			"block",
-						"position":			"absolute",
-						"width":			(videoMetrics.width - 40) + "px",
-						"height":			captionHeight + "px",
-						"backgroundColor":	"rgba(0,0,0,0.5)",
-						"left":				videoMetrics.left + "px",
-						"top":				(videoMetrics.top + videoMetrics.height) - (captionHeight + videoMetrics.controlHeight) + "px",
-						"color":			"white",
-						"textShadow":		"black 0px 0px 5px",
-						"fontFamily":		"Helvetica, Arial, sans-serif",
-						"fontWeight":		"bold",
-						"textAlign":		"center",
-						"paddingLeft":		"20px",
-						"paddingRight":		"20px",
-						"overflow":			"hidden",
-						"zIndex":			20
-					});
-					
-					nodeStyleHelper(DOMNode,"bottom");
-					
-				break;
-				case "textaudiodesc":
-				case "descriptions":
-					// No idea what this is supposed to look like...
-					// No visual display - only read out to screen reader
-					
-					// For the time being, using lyrics display.
-					
-				case "karaoke":
-				case "lyrics":
-					// Decided to put both of these together (they're basically the same thing, save for the bouncing ball!)
-				
-					captionHeight = (videoMetrics.height * 0.1 < 20 ? 20 : videoMetrics.height * 0.1);
-					applyStyles(DOMNode,{
-						"display":			"block",
-						"position":			"absolute",
-						"width":			(videoMetrics.width - 40) + "px",
-						"minHeight":		captionHeight + "px",
-						"backgroundColor":	"rgba(0,0,0,0.5)",
-						"left":				videoMetrics.left + "px",
-						"top":				videoMetrics.top + "px",
-						"color":			"gold",
-						"fontStyle":		"oblique",
-						"textShadow":		"black 0px 0px 5px",
-						"fontFamily":		"Helvetica, Arial, sans-serif",
-						"fontWeight":		"lighter",
-						"textAlign":		"center",
-						"paddingLeft":		"20px",
-						"paddingRight":		"20px",
-						"overflow":			"hidden"
-					});
-					
-					nodeStyleHelper(DOMNode,"top");
-					
-				break;
-				case "chapters":
-				
-				break;
-				case "tickertext":
-					// Stock ticker style, smaller than regular subtitles to fit more in.
-				
-				break;
-				case "toolbar":
-					// Non-standard extension for multi-track media selection toolbars
-				
-				case "alternate":
-					// Alternate video angles
-					// This is a very crude way of keeping the controls visible indeed.
-					// Should perhaps switch the alternate video to be the controlling one when it's visible?
-					applyStyles(DOMNode,{
-						"display":			"block",
-						"position":			"absolute",
-						"width":			videoMetrics.width + "px",
-						"height":			(videoMetrics.height - videoMetrics.controlHeight) + "px",
-						"backgroundColor":	"black",
-						"left":				videoMetrics.left + "px",
-						"top":				videoMetrics.top + "px"
-					});
-					
-				break;
-				case "signlanguage":
-					applyStyles(DOMNode,{
-						"display":			"block",
-						"position":			"absolute",
-						"maxWidth":			((videoMetrics.width/20)*6) + "px",
-						"maxHeight":		(((videoMetrics.height - videoMetrics.controlHeight)/20)*8) + "px",
-						"backgroundColor":	"black",
-						"left":				((videoMetrics.left + videoMetrics.width) - ((videoMetrics.width/20)*7)) + "px",
-						"top":				((videoMetrics.top + videoMetrics.height) - ((videoMetrics.height/20)*11)) + "px",
-						"border":			"solid white 2px"
-					});
-					
-				break;
-				default:
-					// Whoah, we didn't prepare for this one. Just class it with the requested name and move on.
-					// this should be "subtitles"
-			}
-			
-			if (DOMNode.className.indexOf("captionator-kind") === -1) {
-				DOMNode.className += (DOMNode.className.length ? " " : "") + "captionator-kind-" + kind;
-			}
-		}
+		
+		
 	},
 	/*
 		captionator.parseCaptions(string captionData)
@@ -1235,19 +1048,28 @@ var captionator = {
 		"use strict";
 		// Be liberal in what you accept from others...
 		var fileType = "";
+		var subtitles, metadata, styles;
 		
 		// Set up timestamp parsers
 		var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 		var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 		var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
 		var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-		var LRCTimestampParser		= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/ig;
+		var LRCTimestampParser		= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
 
 		if (captionData) {
 			var parseCaptionChunk = function parseCaptionChunk(subtitleElement,objectCount) {
-				var subtitleParts = subtitleElement.split(/\n/g);
-				var timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
+				var subtitleParts, timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
 				var timestampMatch;
+				
+				if (fileType === "LRC") {
+					subtitleParts = [
+						subtitleElement.substr(0,subtitleElement.indexOf("]")),
+						subtitleElement.substr(subtitleElement.indexOf("]")+1)
+					];
+				} else {
+					subtitleParts = subtitleElement.split(/\n/g);
+				}
 				
 				// Trim off any blank lines (logically, should only be max. one, but loop to be sure)
 				while (!subtitleParts[0].replace(/\s+/ig,"").length && subtitleParts.length > 0) {
@@ -1269,7 +1091,7 @@ var captionator = {
 						(timestampMatch = SBVTimestampParser.exec(timestamp))) {
 						
 						// WebVTT / SRT / SUB (VOBSub) / YouTube SBV style timestamp
-
+						
 						timeData = timestampMatch.slice(1);
 						
 						timeIn = 	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
@@ -1311,11 +1133,19 @@ var captionator = {
 			};
 
 			// Begin parsing --------------------
-			var subtitles = captionData
+			subtitles = captionData
 							.replace(/\r\n/g,"\n")
-							.replace(/\r/g,"\n")
-							.split(/\n\n+/g)
-							.filter(function(lineGroup) {
+							.replace(/\r/g,"\n");
+			
+			if (LRCTimestampParser.exec(captionData)) {
+				// LRC file... split by single line
+				subtitles = subtitles.split(/\n+/g);
+				fileType = "LRC";
+			} else {
+				subtitles = subtitles.split(/\n\n+/g);
+			}
+			
+			subtitles = subtitles.filter(function(lineGroup) {
 								if (lineGroup.match(/^WEBVTT(\s*FILE)?/ig)) {
 									fileType = "WebVTT";
 									return false;
