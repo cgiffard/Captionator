@@ -165,7 +165,7 @@ var captionator = {
 					ajaxObject.onreadystatechange = function (eventData) {
 						if (ajaxObject.readyState === 4) {
 							if(ajaxObject.status === 200) {
-								captionData = captionator.parseCaptions(ajaxObject.responseText);
+								captionData = captionator.parseCaptions(ajaxObject.responseText,(currentTrackElement.videoNode.captionatorOptions||{}));
 								currentTrackElement.readyState = captionator.TextTrack.LOADED;
 								captionator.rebuildCaptions(currentTrackElement.videoNode);
 								currentTrackElement.cues.loadCues(captionData);
@@ -181,7 +181,13 @@ var captionator = {
 							}
 						}
 					};
-					ajaxObject.send(null);
+					try {
+						ajaxObject.send(null);
+					} catch(Error) {
+						// Throw error handler, if defined
+						currentTrackElement.readyState = captionator.TextTrack.ERROR;
+						currentTrackElement.onerror(Error);
+					}
 				}
 			};
 			
@@ -279,7 +285,7 @@ var captionator = {
 			this.track = track instanceof captionator.TextTrack ? track : null;
 			this.startTime = parseFloat(startTime);
 			this.endTime = parseFloat(endTime);
-			this.text = typeof(text) === "string" ? text : "";
+			this.text = typeof(text) === "string" || text instanceof captionator.CaptionatorCueStructure ? text : "";
 			this.settings = typeof(settings) === "string" ? settings : "";
 			this.intSettings = {};
 			this.pauseOnExit = !!pauseOnExit;
@@ -333,13 +339,16 @@ var captionator = {
 			
 			// Functions defined by spec (getters, kindof)
 			this.getCueAsSource = function getCueAsSource() {
-				return this.text;
+				// Choosing the below line instead will mean that the raw, unprocessed source will be returned instead.
+				// Not really sure which is the correct behaviour.
+				// return this.text instanceof captionator.CaptionatorCueStructure? this.text.cueSource : this.text;
+				return String(this.text);
 			};
 			
 			this.getCueAsHTML = function getCueAsHTML() {
 				var DOMFragment = document.createDocumentFragment();
 				var DOMNode = document.createElement("div");
-				DOMNode.innerHTML = this.text;
+				DOMNode.innerHTML = String(this.text);
 				
 				Array.prototype.forEach.call(DOMNode.childNodes,function(child) {
 					DOMFragment.appendChild(child.cloneNode(true));
@@ -537,6 +546,66 @@ var captionator = {
 				}
 			};
 		};
+		
+		// Captionator internal cue structure object
+		/**
+		 * @constructor
+		 */
+		captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource,options) {
+			this.isTimeDependent = false;
+			this.cueSource = cueSource;
+			this.options = options;
+			this.toString = function toString(currentTimestamp) {
+				if (options.processCueHTML !== false) {
+					var processLayer = function(layerObject) {
+						var compositeHTML = "", itemIndex, cueChunk;
+						for (itemIndex in layerObject) {
+							if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
+								// We're not a prototype function or local property, and we're in range
+								cueChunk = layerObject[itemIndex];
+								// Don't generate text from the token if it has no contents
+								if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
+									if (cueChunk.token === "v") {
+										compositeHTML	+= "<span data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice "
+														+  "speaker-" + cueChunk.voice.replace(/[a-z0-9]+/ig,"-") + "'>"
+														+  processLayer(cueChunk.children)
+														+  "</span>";
+									} else if(cueChunk.token === "c") {
+										compositeHTML	+= "<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>"
+														+  processLayer(cueChunk.children)
+														+  "</span>";
+									} else if(cueChunk.timeIn > 0) {
+										// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
+										if ((currentTimestamp === null || currentTimestamp === undefined) ||
+											(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
+											
+											compositeHTML	+= "<span class='webvtt-timestamp-span' "
+															+  "data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>"
+															+  processLayer(cueChunk.children)
+															+  "</span>";
+										}
+									} else {
+										compositeHTML	+= cueChunk.rawToken
+														+  processLayer(cueChunk.children)
+														+  "</" + cueChunk.token + ">";
+									}
+								} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
+									compositeHTML += cueChunk;
+								} else {
+									// Didn't match - file a bug!
+								}
+							}
+						}
+						
+						return compositeHTML;
+					};
+					return processLayer(this);
+				} else {
+					return cueSource;
+				}
+			};
+		};
+		captionator.CaptionatorCueStructure.prototype = [];
 		
 		// if requested by options, export the object types
 		if (options.exportObjects) {
@@ -1031,7 +1100,7 @@ var captionator = {
 		
 	},
 	/*
-		captionator.parseCaptions(string captionData)
+		captionator.parseCaptions(string captionData, object options)
 		
 		Accepts and parses SRT caption/subtitle data. Will extend for WebVTT shortly. Perhaps non-JSON WebVTT will work already?
 		This function has been intended from the start to (hopefully) loosely parse both. I'll patch it as required.
@@ -1044,20 +1113,22 @@ var captionator = {
 		An array of TextTrackCue Objects in initial state.
 		
 	*/
-	"parseCaptions": function(captionData) {
+	"parseCaptions": function(captionData, options) {
 		"use strict";
 		// Be liberal in what you accept from others...
-		var fileType = "";
-		var subtitles, metadata, styles;
+		options = options instanceof Object ? options : {};
+		var fileType = "", subtitles = [];
 		
 		// Set up timestamp parsers
 		var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 		var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 		var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
+		var SRTChunkTimestampParser	= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
 		var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
 		var LRCTimestampParser		= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
 
 		if (captionData) {
+			// This function takes chunks of text representing cues, and converts them into cue objects.
 			var parseCaptionChunk = function parseCaptionChunk(subtitleElement,objectCount) {
 				var subtitleParts, timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
 				var timestampMatch;
@@ -1128,10 +1199,110 @@ var captionator = {
 				}
 				
 				// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
-				html = subtitleParts.join("\n");
+				html = options.processCueHTML === false ? subtitleParts.join("\n") : processCaptionHTML(subtitleParts.join("\n"));
 				return new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
 			};
-
+			
+			// This function parses and validates cue HTML/VTT tokens, and converts them into something understandable to the renderer.
+			var processCaptionHTML = function processCaptionHTML(inputHTML) {
+				var cueStructure = new captionator.CaptionatorCueStructure(inputHTML,options),
+					cueSplit = [],
+					splitIndex,
+					currentToken,
+					currentContext,
+					stack = [],
+					stackIndex = 0,
+					chunkTimestamp,
+					timeData;
+			
+				// Process out special cue spans
+				cueSplit = inputHTML
+							.split(/(\<\/?[^\>]+\>)/ig)
+							.filter(function(cuePortionText) {
+								return !!cuePortionText.replace(/\s*/ig,"");
+							});
+				
+				currentContext = cueStructure;
+				for (splitIndex in cueSplit) {
+					if (cueSplit.hasOwnProperty(splitIndex)) {
+						currentToken = cueSplit[splitIndex];
+						
+						if (currentToken.substr(0,1) === "<") {
+							if (currentToken.substr(1,1) === "/") {
+								// Closing tag
+								var TagName = currentToken.substr(2).split(/[\s\>]+/g)[0];
+								if (stack.length > 0) {
+									// Scan backwards through the stack to determine whether we've got an open tag somewhere to close.
+									var stackScanDepth = 0;
+									for (stackIndex = stack.length-1; stackIndex >= 0; stackIndex --) {
+										var parentContext = stack[stackIndex][stack[stackIndex].length-1];
+										stackScanDepth = stackIndex;
+										if (parentContext.token === TagName) break;
+									}
+									
+									currentContext = stack[stackScanDepth];
+									stack = stack.slice(0,stackScanDepth);
+								} else {
+									// Tag mismatch!
+								}
+							} else {
+								// Opening Tag
+								// Check whether the tag is valid according to the WebVTT specification
+								// If not, don't allow it (unless the sanitiseCueHTML option is explicitly set to false)
+								
+								if ((	currentToken.substr(1).match(SRTChunkTimestampParser)	||
+										currentToken.match(/^\<v\s+[^\>]+>/i)					||
+										currentToken.match(/^\<c[a-z0-9\-\_\.]+\>/)				||
+										currentToken.match(/^\<(b|i|u|ruby|rt)\>/))				||
+									options.sanitiseCueHTML !== false) {
+									
+									var tmpObject = {
+										"token": 	currentToken.replace(/[\<\/\>]+/ig,"").split(/[\s\.]+/)[0],
+										"rawToken":	currentToken,
+										"children":	[]
+									};
+									
+									if (tmpObject.token === "v") {
+										tmpObject.voice = currentToken.match(/^<v\s*([^\>]+)\>/i)[1];
+									} else if (tmpObject.token === "c") {
+										tmpObject.classes = currentToken
+																.replace(/[\<\/\>\s]+/ig,"")
+																.split(/[\.]+/ig)
+																.slice(1)
+																.filter(function(classItem){
+																	return !!classItem.replace(/[^a-z0-9]+/ig,"").length;
+																});
+									} else if (chunkTimestamp = tmpObject.token.match(SRTChunkTimestampParser)) {
+										cueStructure.isTimeDependent = true;
+										timeData = chunkTimestamp.slice(1);
+										tmpObject.timeIn = 	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
+															parseInt((timeData[1]||0) * 60,10) +		// Minutes
+															parseInt((timeData[2]||0),10) +				// Seconds
+															parseFloat("0." + (timeData[3]||0),10);		// MS
+									}
+									
+									currentContext.push(tmpObject);
+									stack.push(currentContext);
+									currentContext = tmpObject.children;
+								}
+							}
+						} else {
+							// Text string
+							if (options.sanitiseCueHTML !== false) {
+								currentToken = currentToken
+												.replace(/\</g,"&lt;")
+												.replace(/\>/g,"&gt;")
+												.replace(/\&/g,"&amp;");
+							}
+							
+							currentContext.push(currentToken);
+						}
+					}
+				}
+				
+				return cueStructure;
+			}
+			
 			// Begin parsing --------------------
 			subtitles = captionData
 							.replace(/\r\n/g,"\n")
@@ -1157,7 +1328,7 @@ var captionator = {
 								}
 							})
 							.map(parseCaptionChunk);
-			
+			console.log(subtitles);
 			return subtitles;
 		} else {
 			throw new Error("Required parameter captionData not supplied.");

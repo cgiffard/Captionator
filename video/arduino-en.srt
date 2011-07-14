@@ -1,10 +1,10 @@
 1
 00:00:13,000 --> 00:00:16,100 D:vertical L:90% T:50% S:140%
-I heard about this <span class='arduino'>arduino</span> project, and I saw it online - 
+I heard about this <c.arduino>arduino</c> project, and I saw it online - 
 
 2
 00:00:16,100 --> 00:00:20,100
-- and I said 'Wow! a lot of people are starting to talk about this. I should check it out!'
+- and I said 'Wow! <00:00:18,100>a lot of people are starting to talk about this. I should check it out!'
 
 3
 00:00:20,100 --> 00:00:29,000
@@ -12,7 +12,7 @@ Because we wanted to make a tool for our students that was more modern than what
 
 4
 00:00:30,100 --> 00:00:38,306
-For me it was a case of - this is a tool that I could see using <em>myself</em>, and therefore I could believe in actually helping to get it out to a wider world.
+For me it was a case of - this is a tool that I could see using <i>myself</i>, and therefore I could believe in actually helping to get it out to a wider world.
 
 5
 00:00:38,500 --> 00:00:44,500
@@ -28,7 +28,7 @@ For me, that's about giving people the information they need to recreate the pie
 
 8
 00:01:02,000 --> 00:01:08,000
-I'm really passionate about <span class='arduino'>arduino</span>... because I really care about understanding more about how the world works.
+I'm really passionate about <c.arduino>arduino</c>... because I really care about understanding more about how the world works.
 
 9
 00:01:08,700 --> 00:01:14,463
@@ -56,11 +56,11 @@ So... we had to simplify the interface. And that's the beginning of a completely
 
 15
 00:01:47,700 --> 00:01:52,000
-<span class="arduino title">Arduino: The Documentary</span>
+<c.arduino.title>Arduino: The Documentary</c>
 
 16
 00:01:52,000 --> 00:01:55,800
-The very first thing I tried to do with an <span class="arduino">arduino</span> was run a 3D printer.
+The very first thing I tried to do with an <c.arduino>arduino</c> was run a 3D printer.
 
 17
 00:01:55,800 --> 00:01:58,500
@@ -68,7 +68,7 @@ The very first thing I tried to do with an <span class="arduino">arduino</span> 
 
 18
 00:01:58,500 --> 00:02:00,100
-So we make puppets with the <span class='arduino'>arduino</span>...
+So we make puppets with the <c.arduino>arduino</c>...
 
 19
 00:02:00,100 --> 00:02:04,120
@@ -88,7 +88,7 @@ Many people have built helicopters with four or six motors.
 
 23
 00:02:16,300 --> 00:02:22,100
-Suddenly a message arrived telling us that <span class="arduino">arduino</span>...
+Suddenly a message arrived telling us that <c.arduino>arduino</c>...
 
 24
 00:02:22,100 --> 00:02:25,000
@@ -100,7 +100,7 @@ It ended up being a 17 year old who made the satellite.
 
 26
 00:02:30,000 --> 00:02:45,000
-<span class="arduino title">Arduino: The Documentary</span>
+<c.arduino.title>Arduino: The Documentary</c>
 
 27
 00:02:45,000 --> 00:02:50,000
