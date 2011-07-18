@@ -552,52 +552,62 @@ var captionator = {
 		 * @constructor
 		 */
 		captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource,options) {
+			var cueStructureObject = this;
 			this.isTimeDependent = false;
 			this.cueSource = cueSource;
 			this.options = options;
+			this.processedCue = null;
 			this.toString = function toString(currentTimestamp) {
 				if (options.processCueHTML !== false) {
 					var processLayer = function(layerObject) {
-						var compositeHTML = "", itemIndex, cueChunk;
-						for (itemIndex in layerObject) {
-							if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
-								// We're not a prototype function or local property, and we're in range
-								cueChunk = layerObject[itemIndex];
-								// Don't generate text from the token if it has no contents
-								if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
-									if (cueChunk.token === "v") {
-										compositeHTML	+= "<span data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice "
-														+  "speaker-" + cueChunk.voice.replace(/[a-z0-9]+/ig,"-") + "'>"
-														+  processLayer(cueChunk.children)
-														+  "</span>";
-									} else if(cueChunk.token === "c") {
-										compositeHTML	+= "<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>"
-														+  processLayer(cueChunk.children)
-														+  "</span>";
-									} else if(cueChunk.timeIn > 0) {
-										// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
-										if ((currentTimestamp === null || currentTimestamp === undefined) ||
-											(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
+						if (cueStructureObject.processedCue === null) {
+							var compositeHTML = "", itemIndex, cueChunk;
+							for (itemIndex in layerObject) {
+								if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
+									// We're not a prototype function or local property, and we're in range
+									cueChunk = layerObject[itemIndex];
+									// Don't generate text from the token if it has no contents
+									if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
+										if (cueChunk.token === "v") {
+											compositeHTML +="<span data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
+															"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "'>" +
+															processLayer(cueChunk.children) +
+															"</span>";
+										} else if(cueChunk.token === "c") {
+											compositeHTML +="<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
+															processLayer(cueChunk.children) +
+															"</span>";
+										} else if(cueChunk.timeIn > 0) {
+											// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
+											if ((currentTimestamp === null || currentTimestamp === undefined) ||
+												(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
 											
-											compositeHTML	+= "<span class='webvtt-timestamp-span' "
-															+  "data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>"
-															+  processLayer(cueChunk.children)
-															+  "</span>";
+												compositeHTML +="<span class='webvtt-timestamp-span' " +
+																"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
+																processLayer(cueChunk.children) +
+																"</span>";
+											}
+										} else {
+											compositeHTML +=cueChunk.rawToken +
+															processLayer(cueChunk.children) +
+															"</" + cueChunk.token + ">";
 										}
+									} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
+										compositeHTML += cueChunk;
 									} else {
-										compositeHTML	+= cueChunk.rawToken
-														+  processLayer(cueChunk.children)
-														+  "</" + cueChunk.token + ">";
+										// Didn't match - file a bug!
 									}
-								} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
-									compositeHTML += cueChunk;
-								} else {
-									// Didn't match - file a bug!
 								}
 							}
+							
+							if (!cueStructureObject.isTimeDependent) {
+								cueStructureObject.processedCue = compositeHTML;
+							}
+							
+							return compositeHTML;
+						} else {
+							return cueStructureObject.processedCue;
 						}
-						
-						return compositeHTML;
 					};
 					return processLayer(this);
 				} else {
@@ -723,6 +733,16 @@ var captionator = {
 		var globalLanguage = defaultLanguage || language.split("-")[0];
 		options = options instanceof Object? options : {};
 		
+		var generateID = function(stringLength) {
+			var idComposite = "";
+			stringLength = stringLength ? stringLength : 10;
+			while (idComposite.length < stringLength) {
+				idComposite += String.fromCharCode(65 + Math.floor(Math.random()*26));
+			}
+			
+			return "captionator" + idComposite;
+		}
+		
 		if (!videoElement.captioned) {
 			videoElement.captionatorOptions = options;
 			videoElement.className += (videoElement.className.length ? " " : "") + "captioned";
@@ -730,12 +750,7 @@ var captionator = {
 			
 			// Check whether video element has an ID. If not, create one
 			if (videoElement.id.length === 0) {
-				var idComposite = "";
-				while (idComposite.length < 10) {
-					idComposite += String.fromCharCode(65 + Math.floor(Math.random()*26));
-				}
-				
-				videoElement.id = "captionator" + idComposite;
+				videoElement.id = generateID();
 			}
 			
 			var enabledDefaultTrack = false;
@@ -748,7 +763,7 @@ var captionator = {
 				}
 				
 				var trackObject = videoElement.addTrack(
-										trackElement.getAttribute("id"),
+										(trackElement.getAttribute("id")||generateID(10)),
 										trackElement.getAttribute("kind"),
 										trackElement.getAttribute("label"),
 										trackElement.getAttribute("srclang").split("-")[0],
@@ -936,7 +951,7 @@ var captionator = {
 				
 				compositeCueHTML = "";
 				track.activeCues.forEach(function(cue) {
-					compositeCueHTML += "<div class=\"captionator-cue\">" + cue.getCueAsSource() + "</div>";
+					compositeCueHTML += "<div class=\"captionator-cue\">" + cue.text.toString(videoElement.currentTime) + "</div>";
 				});
 				
 				cuesChanged = false;
@@ -946,16 +961,16 @@ var captionator = {
 				}
 				
 				if (compositeCueHTML.length) {
-					// Defeat a horrid Chrome 10 video bug
-					// http://stackoverflow.com/questions/5289854/chrome-10-custom-video-interface-problem/5400438#5400438
 					if (cuesChanged || containerObject.style.display === "none") {
 						containerObject.style.display = "block";
 
 						// Refresh font sizing etc
 						captionator.styleNode(containerObject,track.kind,track.videoNode);
 						
-						if (window.navigator.userAgent.toLowerCase().indexOf("chrome/10") > -1) {	
-							containerObject.style.backgroundColor = "rgba(0,0,0,0.5" + Math.random().toString().replace(".","") + ")";
+						if (window.navigator.userAgent.toLowerCase().indexOf("chrome/10") > -1) {
+							// Defeat a horrid Chrome 10 video bug
+							// http://stackoverflow.com/questions/5289854/chrome-10-custom-video-interface-problem/5400438#5400438
+							containerObject.style.backgroundColor = "rgba(0,0,0,0.0" + Math.random().toString().replace(".","") + ")";
 						}
 					}
 				} else {
@@ -1045,6 +1060,11 @@ var captionator = {
 	*/
 	"styleNode": function(DOMNode, kind, videoElement, applyClassesOnly) {
 		"use strict";
+		var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
+		var minimumLineHeight = 14;				// As above, in points
+		var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
+		var baseFontSize, baseLineHeight;
+		
 		var applyStyles = function(StyleNode, styleObject) {
 			for (var styleName in styleObject) {
 				if ({}.hasOwnProperty.call(styleObject, styleName)) {
@@ -1094,9 +1114,43 @@ var captionator = {
 			};
 		};
 		
-		// NEW RENDERER GOES HERE.......
+		var checkDirection = function(text) {
+			// Inspired by http://www.frequency-decoder.com/2008/12/12/automatically-detect-rtl-text
+			// Thanks guys!
+			var ltrChars            = 'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02B8\u0300-\u0590\u0800-\u1FFF'+'\u2C00-\uFB1C\uFDFE-\uFE6F\uFEFD-\uFFFF',
+				rtlChars            = '\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC',
+				ltrDirCheckRe       = new RegExp('^[^'+rtlChars+']*['+ltrChars+']'),
+				rtlDirCheckRe       = new RegExp('^[^'+ltrChars+']*['+rtlChars+']');
+			
+			return !!rtlDirCheckRe.test(text) ? 'rtl' : (!!ltrDirCheckRe.test(text) ? 'ltr' : '');
+		}
+		
+		// Set up the cue canvas
+		var videoMetrics = getVideoMetrics(videoElement);
+		
+		// Set up font metrics
+		baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
+		baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
+		baseLineHeight = Math.floor(baseFontSize * 1.3);
+		baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
+		
+		applyStyles(DOMNode,{
+			"position": "absolute",
+			"zIndex": 100,
+			"height": (videoMetrics.height - videoMetrics.controlHeight) + "px",
+			"width": videoMetrics.width + "px",
+			"top": videoMetrics.top + "px",
+			"left": videoMetrics.left + "px",
+			"color": "white",
+			"textShadow": "black 0px 0px 5px",
+			"fontFamily": "Verdana, Helvetica, Arial, sans-serif",
+			"fontSize": baseFontSize + "pt",
+			"fontWeight": "bold",
+			"lineHeight": baseLineHeight + "pt"
+		});
 		
 		
+		console.log("styling node",DOMNode);
 		
 	},
 	/*
