@@ -30,6 +30,29 @@ var captionator = {
 		}
 	},
 	/*
+		captionator.generateID([number ID length])
+		
+		Generates a randomised string prefixed with the word captionator. This function is used internally to keep track of
+		objects and nodes in the DOM.
+		
+		First parameter: A number of random characters/numbers to generate. This defaults to 10.
+		
+		RETURNS:
+		
+		The generated ID string.
+		
+	*/
+	"generateID": function(stringLength) {
+		"use strict";
+		var idComposite = "";
+		stringLength = stringLength ? stringLength : 10;
+		while (idComposite.length < stringLength) {
+			idComposite += String.fromCharCode(65 + Math.floor(Math.random()*26));
+		}
+		
+		return "captionator" + idComposite;
+	},
+	/*
 		captionator.captionify([selector string array | DOMElement array | selector string | singular dom element ],
 								[defaultLanguage - string in BCP47],
 								[options - JS Object])
@@ -114,10 +137,10 @@ var captionator = {
 					
 						if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
 							// actually hide the captions
-							containerID = "captionator-" + this.videoNode.id + "-" + this.kind + "-" + this.language;
-							container = document.getElementById(containerID);
-							if (container) {
-								container.parentNode.removeChild(container);
+							if (videoElement.containerObject) {
+								try {
+									videoElement.containerObject.parentNode.removeChild(videoElement.containerObject);
+								} catch(Error) {}
 							}
 						}
 						
@@ -297,11 +320,13 @@ var captionator = {
 			// and is positioned horizontally, with consecutive lines displayed to the left of each other), or
 			// vertical growing right (a line extends vertically and is positioned horizontally, with consecutive
 			// lines displayed to the right of each other).
+			// Values:
+			// horizontal, vertical, vertical-lr
 			this.direction = "horizontal";
 			
 			// A boolean indicating whether the line's position is a line position (positioned to a multiple of the
 			// line dimensions of the first line of the cue), or whether it is a percentage of the dimension of the video.
-			this.snapToLines = false;
+			this.snapToLines = true;
 			
 			// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
 			// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
@@ -310,21 +335,24 @@ var captionator = {
 			
 			// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
 			// of the video, as defined by the writing direction.
-			this.textPosition = 0;
+			this.textPosition = 50;
 			
 			// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
 			// be interpreted as a percentage of the video, as defined by the writing direction.
-			this.size = 0;
+			this.size = 100;
 			
 			// An alignment for the text of each line of the cue, either start alignment (the text is aligned towards its
 			// start side), middle alignment (the text is aligned centered between its start and end sides), end alignment
 			// (the text is aligned towards its end side). Which sides are the start and end sides depends on the
 			// Unicode bidirectional algorithm and the writing direction. [BIDI]
-			this.alignment = "";
+			// Values:
+			// start, middle, end
+			this.alignment = "middle";
 			
 			// Parse VTT Settings...
 			if (this.settings.length) {
 				var intSettings = this.intSettings;
+				var currentCue = this;
 				settings = settings.split(/\s+/).filter(function(settingItem) { return settingItem.length > 0;});
 				if (settings instanceof Array) {
 					settings.forEach(function(cueItem) {
@@ -332,6 +360,10 @@ var captionator = {
 						cueItem = cueItem.split(":");
 						if (settingMap[cueItem[0]]) {
 							intSettings[settingMap[cueItem[0]]] = cueItem[1];
+						}
+						
+						if (settingMap[cueItem[0]] in currentCue) {
+							currentCue[settingMap[cueItem[0]]] = cueItem[1];
 						}
 					});
 				}
@@ -733,16 +765,6 @@ var captionator = {
 		var globalLanguage = defaultLanguage || language.split("-")[0];
 		options = options instanceof Object? options : {};
 		
-		var generateID = function(stringLength) {
-			var idComposite = "";
-			stringLength = stringLength ? stringLength : 10;
-			while (idComposite.length < stringLength) {
-				idComposite += String.fromCharCode(65 + Math.floor(Math.random()*26));
-			}
-			
-			return "captionator" + idComposite;
-		}
-		
 		if (!videoElement.captioned) {
 			videoElement.captionatorOptions = options;
 			videoElement.className += (videoElement.className.length ? " " : "") + "captioned";
@@ -750,7 +772,7 @@ var captionator = {
 			
 			// Check whether video element has an ID. If not, create one
 			if (videoElement.id.length === 0) {
-				videoElement.id = generateID();
+				videoElement.id = captionator.generateID();
 			}
 			
 			var enabledDefaultTrack = false;
@@ -763,7 +785,7 @@ var captionator = {
 				}
 				
 				var trackObject = videoElement.addTrack(
-										(trackElement.getAttribute("id")||generateID(10)),
+										(trackElement.getAttribute("id")||captionator.generateID()),
 										trackElement.getAttribute("kind"),
 										trackElement.getAttribute("label"),
 										trackElement.getAttribute("srclang").split("-")[0],
@@ -914,67 +936,39 @@ var captionator = {
 		var trackList = videoElement.tracks || [];
 		var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
 		var currentTime = videoElement.currentTime;
-		var containerID = "captionator-unset"; // Hopefully you don't actually see this in your id attribute!
-		var containerObject = null;
 		var compositeCueHTML = "";
 		var cuesChanged = false;
 		
 		// Work out what cues are showing...
 		trackList.forEach(function(track,trackIndex) {
 			if (track.mode === captionator.TextTrack.SHOWING && track.readyState === captionator.TextTrack.LOADED) {
-				containerID = "captionator-" + videoElement.id + "-" + track.kind + "-" + track.language;
-				if (track.containerObject) {
-					containerObject = track.containerObject;
-				} else {
-					containerObject = document.getElementById(containerID);
-				}
-
-				if (!containerObject) {
-					// visually display captions
-					containerObject = document.createElement("div");
-					containerObject.id = containerID;
-					document.body.appendChild(containerObject);
-					track.containerObject = containerObject;
-					// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
-					containerObject.setAttribute("aria-live","polite");
-					containerObject.setAttribute("aria-atomic","true");
-					captionator.styleNode(containerObject,track.kind,track.videoNode);
-				} else if (!containerObject.parentNode) {
-					document.body.appendChild(containerObject);
-				}
+				captionator.styleCueCanvas(videoElement);
 				
-				// TODO(silvia): we should not really muck with the aria-describedby attribute of the video
-				if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
-					var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
-					videoElement.setAttribute("aria-describedby",existingValue + containerID);
-				}
-				
-				compositeCueHTML = "";
 				track.activeCues.forEach(function(cue) {
 					compositeCueHTML += "<div class=\"captionator-cue\">" + cue.text.toString(videoElement.currentTime) + "</div>";
 				});
 				
 				cuesChanged = false;
-				if (String(containerObject.innerHTML) !== compositeCueHTML) {
-					containerObject.innerHTML = compositeCueHTML;
+				if (String(videoElement.containerObject.innerHTML) !== compositeCueHTML) {
+					videoElement.containerObject.innerHTML = compositeCueHTML;
 					cuesChanged = true;
 				}
 				
 				if (compositeCueHTML.length) {
-					if (cuesChanged || containerObject.style.display === "none") {
-						containerObject.style.display = "block";
-
+					if (cuesChanged || videoElement.containerObject.style.display === "none") {
+						videoElement.containerObject.style.display = "block";
+						
 						// Refresh font sizing etc
-						captionator.styleNode(containerObject,track.kind,track.videoNode);
+						// captionator.styleNode(captionator.styleCueCanvas(),track.kind,track.videoNode);
 						
 						if (window.navigator.userAgent.toLowerCase().indexOf("chrome/10") > -1) {
 							// Defeat a horrid Chrome 10 video bug
 							// http://stackoverflow.com/questions/5289854/chrome-10-custom-video-interface-problem/5400438#5400438
-							containerObject.style.backgroundColor = "rgba(0,0,0,0.0" + Math.random().toString().replace(".","") + ")";
+							videoElement.containerObject.style.backgroundColor = "rgba(0,0,0,0.0" + Math.random().toString().replace(".","") + ")";
 						}
 					}
 				} else {
-					containerObject.style.display = "none";
+					videoElement.containerObject.style.display = "none";
 				}
 			}
 		});
@@ -1038,92 +1032,134 @@ var captionator = {
 		}
 	},
 	/*
-		captionator.styleNode(DOMNode, kind / role, videoElement, [boolean applyClassesOnly])
+		captionator.getNodeMetrics(DOMNode)
 		
-		Styles autogenerated caption containers and media elements according to the kind or 'role' (in the W3 spec) of the track.
-		This function is not intended to allow easy application of arbitrary styles, but rather centralise all styling within
-		the script (enabling easy removal of styles for replacement with CSS classes if desired.)
+		Calculates and returns a number of sizing and position metrics from a DOMNode of any variety (though this function is intended
+		to be used with HTMLVideoElements.) Returns the height of the default controls on a video based on user agent detection
+		(As far as I know, there's no way to dynamically calculate the height of browser UI controls on a video.)
+		
+		First parameter: DOMNode from which to calculate sizing metrics. This parameter is mandatory.
+		
+		RETURNS:
+		
+		An object with the following properties:
+			left: The calculated left offset of the node
+			top: The calculated top offset of the node
+			height: The calculated height of the node
+			width: The calculated with of the node
+			controlHeight: If the node is a video and has the `controls` attribute present, the height of the UI controls for the video. Otherwise, zero.
+		
+	*/
+	"getNodeMetrics": function(DOMNode) {
+		"use strict";
+		var nodeComputedStyle = window.getComputedStyle(DOMNode,null);
+		var offsetObject = DOMNode;
+		var offsetTop = DOMNode.offsetTop, offsetLeft = DOMNode.offsetLeft;
+		var width = DOMNode, height = 0;
+		var controlHeight = 0;
+		
+		width = parseInt(nodeComputedStyle.getPropertyValue("width"),10);
+		height = parseInt(nodeComputedStyle.getPropertyValue("height"),10);
+		
+		while (offsetObject = offsetObject.offsetParent) {
+			offsetTop += offsetObject.offsetTop;
+			offsetLeft += offsetObject.offsetLeft;
+		}
+		
+		if (DOMNode.hasAttribute("controls")) {
+			// Get heights of default control strip in various browsers
+			// There could be a way to measure this live but I haven't thought/heard of it yet...
+			var UA = navigator.userAgent.toLowerCase();
+			if (UA.indexOf("chrome") !== -1) {
+				controlHeight = 32;
+			} else if (UA.indexOf("opera") !== -1) {
+				controlHeight = 25;
+			} else if (UA.indexOf("firefox") !== -1) {
+				controlHeight = 28;
+			} else if (UA.indexOf("ie 9") !== -1 || UA.indexOf("ipad") !== -1) {
+				controlHeight = 44;
+			} else if (UA.indexOf("safari") !== -1) {
+				controlHeight = 25;
+			}
+		}
+		
+		return {
+			left: offsetLeft,
+			top: offsetTop,
+			width: width,
+			height: height,
+			controlHeight: controlHeight
+		};
+	},
+	/*
+		captionator.applyStyles(DOMNode, Style Object)
+		
+		A fast way to apply multiple CSS styles to a DOMNode.
 		
 		First parameter: DOMNode to style. This parameter is mandatory.
 		
-		Second parameter: Role of the DOMNode. This parameter is mandatory.
-		
-		Third parameter: HTMLVideoElement to which the caption is attached. This is used to position the caption container appropriately.
-		
-		Fourth parameter: Optional boolean specifying whether to apply styles or just classes (classes are applied in both circumstances.)
-		A false value will style the element - true values will only apply classes.
+		Second parameter: A key/value object where the keys are camel-cased variants of CSS property names to apply,
+		and the object values are CSS property values as per the spec. This parameter is mandatory.
 		
 		RETURNS:
 		
 		Nothing.
 		
 	*/
-	"styleNode": function(DOMNode, kind, videoElement, applyClassesOnly) {
+	"applyStyles": function(StyleNode, styleObject) {
+		"use strict";
+		for (var styleName in styleObject) {
+			if ({}.hasOwnProperty.call(styleObject, styleName)) {
+				StyleNode.style[styleName] = styleObject[styleName];
+			}
+		}
+	},
+	/*
+		captionator.checkDirection(text)
+		
+		Determines whether the text string passed into the function is an RTL (right to left) or LTR (left to right) string.
+		
+		First parameter: Text string to check. This parameter is mandatory.
+		
+		RETURNS:
+		
+		The text string 'rtl' if the text is a right to left string, 'ltr' if the text is a left to right string, or an empty string
+		if the direction could not be determined.
+		
+	*/
+	"checkDirection": function(text) {
+		"use strict";
+		// Inspired by http://www.frequency-decoder.com/2008/12/12/automatically-detect-rtl-text
+		// Thanks guys!
+		var ltrChars            = 'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02B8\u0300-\u0590\u0800-\u1FFF'+'\u2C00-\uFB1C\uFDFE-\uFE6F\uFEFD-\uFFFF',
+			rtlChars            = '\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC',
+			ltrDirCheckRe       = new RegExp('^[^'+rtlChars+']*['+ltrChars+']'),
+			rtlDirCheckRe       = new RegExp('^[^'+ltrChars+']*['+rtlChars+']');
+		
+		return !!rtlDirCheckRe.test(text) ? 'rtl' : (!!ltrDirCheckRe.test(text) ? 'ltr' : '');
+	},
+	/*
+		captionator.styleCue(DOMNode, cueObject, videoNode)
+		
+		Styles and positions cue nodes according to the WebVTT specification.
+		
+		First parameter: The DOMNode representing the cue to style. This parameter is mandatory.
+		
+		Second parameter: The TextTrackCue itself.
+		
+		Third Parameter: The HTMLVideoElement with which the cue is associated. This parameter is mandatory.
+		
+		RETURNS:
+		
+		Nothing.
+		
+	*/
+	"styleCue": function(DOMNode, cueObject, videoElement) {
 		"use strict";
 		var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
 		var minimumLineHeight = 14;				// As above, in points
 		var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
 		var baseFontSize, baseLineHeight;
-		
-		var applyStyles = function(StyleNode, styleObject) {
-			for (var styleName in styleObject) {
-				if ({}.hasOwnProperty.call(styleObject, styleName)) {
-					StyleNode.style[styleName] = styleObject[styleName];
-				}
-			}
-		};
-		
-		var getVideoMetrics = function(DOMNode) {
-			var videoComputedStyle = window.getComputedStyle(DOMNode,null);
-			var offsetObject = DOMNode;
-			var offsetTop = DOMNode.offsetTop, offsetLeft = DOMNode.offsetLeft;
-			var width = DOMNode, height = 0;
-			var controlHeight = 0;
-			
-			width = parseInt(videoComputedStyle.getPropertyValue("width"),10);
-			height = parseInt(videoComputedStyle.getPropertyValue("height"),10);
-			
-			while (offsetObject = offsetObject.offsetParent) {
-				offsetTop += offsetObject.offsetTop;
-				offsetLeft += offsetObject.offsetLeft;
-			}
-			
-			if (DOMNode.hasAttribute("controls")) {
-				// Get heights of default control strip in various browsers
-				// There could be a way to measure this live but I haven't thought/heard of it yet...
-				var UA = navigator.userAgent.toLowerCase();
-				if (UA.indexOf("chrome") !== -1) {
-					controlHeight = 32;
-				} else if (UA.indexOf("opera") !== -1) {
-					controlHeight = 25;
-				} else if (UA.indexOf("firefox") !== -1) {
-					controlHeight = 28;
-				} else if (UA.indexOf("ie 9") !== -1 || UA.indexOf("ipad") !== -1) {
-					controlHeight = 44;
-				} else if (UA.indexOf("safari") !== -1) {
-					controlHeight = 25;
-				}
-			}
-			
-			return {
-				left: offsetLeft,
-				top: offsetTop,
-				width: width,
-				height: height,
-				controlHeight: controlHeight
-			};
-		};
-		
-		var checkDirection = function(text) {
-			// Inspired by http://www.frequency-decoder.com/2008/12/12/automatically-detect-rtl-text
-			// Thanks guys!
-			var ltrChars            = 'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02B8\u0300-\u0590\u0800-\u1FFF'+'\u2C00-\uFB1C\uFDFE-\uFE6F\uFEFD-\uFFFF',
-				rtlChars            = '\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC',
-				ltrDirCheckRe       = new RegExp('^[^'+rtlChars+']*['+ltrChars+']'),
-				rtlDirCheckRe       = new RegExp('^[^'+ltrChars+']*['+rtlChars+']');
-			
-			return !!rtlDirCheckRe.test(text) ? 'rtl' : (!!ltrDirCheckRe.test(text) ? 'ltr' : '');
-		}
 		
 		// Set up the cue canvas
 		var videoMetrics = getVideoMetrics(videoElement);
@@ -1150,8 +1186,88 @@ var captionator = {
 		});
 		
 		
-		console.log("styling node",DOMNode);
+		// console.log("styling node",DOMNode);
 		
+	},
+	/*
+		captionator.styleCueCanvas(VideoNode)
+		
+		Styles and positions a canvas (not a <canvas> object - just a div) for displaying cues on a video.
+		If the HTMLVideoElement in question does not have a canvas, one is created for it.
+		
+		First parameter: The HTMLVideoElement for which the cue canvas will be styled/created. This parameter is mandatory.
+		
+		RETURNS:
+		
+		Nothing.
+		
+	*/
+	"styleCueCanvas": function(videoElement) {
+		"use strict";
+		// Variables you might want to tweak
+		var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
+		var minimumLineHeight = 14;				// As above, in points
+		var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
+		
+		// Internal variables
+		var baseFontSize, baseLineHeight;
+		var containerObject;
+		var containerID;
+		
+		if (!(videoElement instanceof HTMLVideoElement)) {
+			throw new Error("Cannot style a cue canvas for a non-video node!");
+		}
+		
+		if (videoElement.containerObject) {
+			containerObject = videoElement.containerObject;
+			containerID = containerObject.id
+		}
+
+		if (!containerObject) {
+			// visually display captions
+			containerObject = document.createElement("div");
+			containerObject.className = "captionator-cue-canvas";
+			containerID = captionator.generateID();
+			containerObject.id = containerID;
+			document.body.appendChild(containerObject);
+			videoElement.containerObject = containerObject;
+			// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
+			containerObject.setAttribute("aria-live","polite");
+			containerObject.setAttribute("aria-atomic","true");
+		} else if (!containerObject.parentNode) {
+			document.body.appendChild(containerObject);
+		}
+		
+		// TODO(silvia): we should not really muck with the aria-describedby attribute of the video
+		if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
+			var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
+			videoElement.setAttribute("aria-describedby",existingValue + containerID);
+		}
+		
+		// Set up the cue canvas
+		var videoMetrics = captionator.getNodeMetrics(videoElement);
+		
+		// Set up font metrics
+		baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
+		baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
+		baseLineHeight = Math.floor(baseFontSize * 1.3);
+		baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
+		
+		// Style node!
+		captionator.applyStyles(containerObject,{
+			"position": "absolute",
+			"zIndex": 100,
+			"height": (videoMetrics.height - videoMetrics.controlHeight) + "px",
+			"width": videoMetrics.width + "px",
+			"top": videoMetrics.top + "px",
+			"left": videoMetrics.left + "px",
+			"color": "white",
+			"textShadow": "black 0px 0px 5px",
+			"fontFamily": "Verdana, Helvetica, Arial, sans-serif",
+			"fontSize": baseFontSize + "pt",
+			"fontWeight": "bold",
+			"lineHeight": baseLineHeight + "pt"
+		});
 	},
 	/*
 		captionator.parseCaptions(string captionData, object options)

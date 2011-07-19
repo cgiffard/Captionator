@@ -8,11 +8,12 @@
 	<body>
 		<h1>HTML5 Video Closed Captioning Example</h1>
 		<p><em><strong>Note:</strong> the German and Japanese subtitles are machine translated.</em></p>
-		<video controls autobuffer id="videoTest" width="1024" height="464">
+		<video controls autobuffer id="videoTest" width="512" height="232" volume="0">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
-			<track kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" default />
+			<track kind="captions" src="video/example.webvtt" type="text/srt" srclang="en" label="English Subtitles" default />
+			<track kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" />
 			<track kind="captions" src="video/arduino-de.srt" type="text/srt" srclang="de" label="German Subtitles" />
 			<track kind="captions" src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Japanese Subtitles" />
 			<track kind="audiodescription" src="audio/arduino-en.mp3" type="audio/mp3" srclang="en" label="English Descriptive Audio" />
@@ -32,115 +33,18 @@
 			-->
 		</video>
 		<h2>Media Controls</h2>
-		<h3>TextTracks</h3>
-		<div id="texttrack-controls"></div>
-		<h3>MediaTracks</h3>
-		<div id="mediatrack-controls"></div>
-		<h2>Transcript</h2>
-		<div id="transcript"></div>
+		
+		
 		<script type="text/javascript" src="js/captionator.js"></script>
-		<!-- 
-			The following sets up captionator and shows how you can use the
-			TextTrack API to pull out all the cues of a track into a transcript.
-		-->
+		
+		<!-- example usage -->
+		<script type="text/javascript" src="js/captionator-example-api.js"></script>
 		<script type="text/javascript">
-			window.addEventListener("load",function(eventData) {
-				// initialise Captionator so functionality is available
+			window.addEventListener("load",function() {
 				captionator.captionify();
-
-				// creates a transcript from a track's text data
-				generateTranscript = function(track, transcriptDestination) {
-					var captionID, captionData;
-
-					if (typeof(transcriptDestination) === "string") {
-						transcriptDestination = document.querySelectorAll(transcriptDestination)[0];
-					}
-
-					if (typeof(transcriptDestination) === "object") {
-						if (track.readyState === captionator.TextTrack.LOADED) {
-							transcriptDestination.innerHTML = "";
-							track.cues.forEach(function(cue) {
-								transcriptDestination.innerHTML += "<p class='transcriptLine'>" + cue.getCueAsSource() + "</p>";
-							});
-						} else {
-							if (track.readyState === captionator.TextTrack.LOADING) {
-								track.onload = function() {
-									generateTranscript(track, transcriptDestination);
-								}
-							} else { // ERROR or NONE
-								track.loadTrack(track.src,function() {
-									generateTranscript(track, transcriptDestination);
-								});
-							}
-						}
-					} else {
-						return false;
-					}
-				};
 				
-				// create transcript for any default loaded tracks
-				document.getElementById("videoTest").tracks.forEach(function(track) {
-					// enable track & update transcript
-					if (track.mode === captionator.TextTrack.SHOWING) {
-						generateTranscript(track, "#transcript");
-					}
-				});
-				
-			},false);
-		</script>
-		<!--
-			The following script demonstrates how you can use the API to enable and disable
-			caption tracks. This functionality should eventually be part of the @controls of the video.
-		-->
-		<script type="text/javascript">
-			// build the caption track switcher and callback for switching tracks
-			window.addEventListener("load",function(eventData) {
-				var createSwitcher = function(trackList) {
-					var subtitleSelector = document.createElement("select");
-					
-					subtitleSelector.addEventListener("change",function(eventData) {
-						trackToEnable = parseInt(eventData.target.value,10);
-						trackList.forEach(function(track,index) {
-							if (index === trackToEnable) {
-								// enable track & update transcript
-								track.mode = captionator.TextTrack.SHOWING;
-								
-								if (track instanceof captionator.TextTrack) {
-									generateTranscript(track, "#transcript");
-								}
-							} else if (track.mode != captionator.TextTrack.OFF) {
-								// hide showing tracks
-								track.mode = captionator.TextTrack.HIDDEN;
-							}
-						});
-					},false);
-					
-					var subtitleOption = document.createElement("option");
-					subtitleOption.innerHTML = "No Tracks Enabled";
-					subtitleOption.setAttribute("value",-1);
-					subtitleSelector.appendChild(subtitleOption);
-					
-					trackList.forEach(function(track,index) {
-						var subtitleOption = document.createElement("option");
-						subtitleOption.innerHTML = track.label + " (" + track.language + ")";
-						subtitleOption.setAttribute("value",index);
-						
-						if (track.mode === captionator.TextTrack.SHOWING) {
-							subtitleOption.setAttribute("selected","selected");
-						}
-						
-						subtitleSelector.appendChild(subtitleOption);
-					});
-					
-					return subtitleSelector;
-				}
-				
-				// Generate the switcher elements
-				video = document.getElementById("videoTest");
-				console.log(createSwitcher(video.tracks));
-				document.getElementById("texttrack-controls").appendChild(createSwitcher(video.tracks));
-				document.getElementById("mediatrack-controls").appendChild(createSwitcher(video.mediaTracks));
-				
+				var videoObject = document.getElementsByTagName("video")[0];
+				document.body.appendChild(generateMediaControls(videoObject));
 			},false);
 		</script>
 	</body>
