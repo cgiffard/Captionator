@@ -1286,7 +1286,7 @@
 				}
 				
 			} else {
-				cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100)) : videoMetrics.width;
+				cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100) : videoMetrics.width;
 			}
 			
 			captionator.applyStyles(DOMNode,{
