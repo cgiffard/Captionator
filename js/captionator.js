@@ -1008,11 +1008,10 @@
 					cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
 					cueNode.className = "captionator-cue";
 					cueNode.innerHTML = cue.text.toString(currentTime);
+					videoElement.containerObject.appendChild(cueNode);
 					captionator.styleCue(cueNode,cue,videoElement);
-					renderDocumentFragment.appendChild(cueNode);
+					//renderDocumentFragment.appendChild(cueNode);
 				});
-				
-				videoElement.containerObject.appendChild(renderDocumentFragment);
 			}
 		},
 		/*
@@ -1200,9 +1199,9 @@
 			var lineHeightRatio = 1.3;				// Caption line height is 1.8 times the font size
 			
 			// Variables for maintaining render calculations
-			var cueX, cueY, cueWidth, cueHeight, cueSize;
+			var cueX = 0, cueY = 0, cueWidth = 0, cueHeight = 0, cueSize, cueAlignment, cuePadding = 0;
 			var baseFontSize, baseLineHeight;
-			var videoHeightInLines, videoWidthInLines;
+			var videoHeightInLines, videoWidthInLines, pixelLineHeight;
 			
 			// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 			// (sadly, all the good ones!)
@@ -1253,15 +1252,21 @@
 					"left": 0
 				};
 			}
-			
+			cueObject.snapToLines = false;
 			// Calculate font metrics
 			baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
 			baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
 			baseLineHeight = Math.floor(baseFontSize * lineHeightRatio);
 			baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
+			pixelLineHeight = ((baseLineHeight/72)*96);
 			
-			cueSize = parseFloat(String(cueObject.size).replace(/[^\d]/ig,""),10);
+			// Calculate render area height & width in lines
+			videoHeightInLines = Math.floor(videoMetrics.height / pixelLineHeight);
+			videoWidthInLines = Math.floor(videoMetrics.width / pixelLineHeight);
+			
+			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""),10);
 			cueSize = cueSize <= 100 ? cueSize : 100;
+			cuePadding = Math.floor(videoMetrics.height * 0.01);
 			
 			if (cueObject.linePosition === "auto") {
 				// 98% of the available render area height leaves us a little bit of a gap at the
@@ -1270,45 +1275,76 @@
 				// We just choose the bottom/left/right-most available line for ourselves.
 				
 				if (cueObject.snapToLines) {
-					
+					cueObject.linePosition = cueObject.direction === "horizontal" ? videoHeightInLines : videoWidthInLines;
 				} else {
 					cueObject.linePosition = 98;
 				}
 			}
 			
 			if (cueObject.direction === "horizontal") {
+				cueHeight = pixelLineHeight;
 				cueWidth = videoElement._captionator_availableCueArea.width * (cueSize/100);
 				
-				if (cueObject.snapToLines === true) {
-					
+				if (cueObject.textPosition === "auto") {
+					cueX = ((videoElement._captionator_availableCueArea.width - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 				} else {
-					
+					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
+					cueX = ((videoElement._captionator_availableCueArea.width - cueWidth) * (cueObject.textPosition/100)) + 
+							videoElement._captionator_availableCueArea.left;
+				}
+				
+				if (cueObject.snapToLines === true) {
+					cueY = ((videoHeightInLines-2) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
+				} else {
+					cueY = ((videoElement._captionator_availableCueArea.height * (cueObject.linePosition/100)) +
+							videoElement._captionator_availableCueArea.top) - (pixelLineHeight + (cuePadding*2));
 				}
 				
 			} else {
+				cueWidth = pixelLineHeight;
 				cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100);
+				
+				if (cueObject.textPosition === "auto") {
+					cueY = (videoElement._captionator_availableCueArea.height - cueHeight) / 2;
+				} else {
+					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
+					cueX = (videoElement._captionator_availableCueArea.width - cueWidth) * (cueObject.textPosition/100);
+				}
+				
+				if (cueObject.snapToLines === true) {
+					if (cueObject.direction == "vertical-lr") {
+						cueY = ((renderAreaHeightInLines-2) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
+					} else {
+						cueY = (videoElement._captionator_availableCueArea.top + videoElement._captionator_availableCueArea.height) -
+								((renderAreaHeightInLines-1) * pixelLineHeight);
+					}
+				} else {
+					if (cueObject.direction == "vertical-lr") {
+						
+					} else {
+						
+					}
+				}
+				
+			}
+			
+			if (cueObject.direction === "rtl") {
+				cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
+			} else {
+				cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment]
 			}
 			
 			captionator.applyStyles(DOMNode,{
 				"position": "absolute",
 				"width": cueWidth + "px",
-				"top": "3%",
-				"padding": "1%",
-				"textAlign": {"start":"left","middle":"center","end":"right"}[cueObject.alignment],
+				"height": cueHeight + "px",
+				"top": cueY + "px",
+				"left": cueX + "px",
+				"padding": cuePadding + "px",
+				"textAlign": cueAlignment,
 				"backgroundColor": "rgba(0,0,0,0.5)",
 				"direction": captionator.checkDirection(String(cueObject.text))
-				// "marginLeft": 
 			});
-			
-			// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
-			// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
-			// position is to depend on the other active tracks.
-			this.linePosition = "auto";
-			
-			// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
-			// of the video, as defined by the writing direction.
-			this.textPosition = 50;
-			
 			
 			if (cueObject.direction === "vertical" || cueObject.direction === "vertical-lr") {
 				// Split text into character span chunks
@@ -1321,11 +1357,23 @@
 				
 				
 			} else {
-				// split text into lines
-				// wrap lines with a span
+				// Now shift cue up if required to ensure it's all visible
+				if ((DOMNode.scrollHeight-1) > (DOMNode.offsetHeight + (videoMetrics.height*0.02))) {
+					cueHeight = (DOMNode.scrollHeight + (videoMetrics.height*0.01));
+					var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
+					DOMNode.style.height = cueHeight + "px";
+					DOMNode.style.top = (parseFloat(DOMNode.style.top.replace(/[^\d\.]/ig,""),10) - upwardAjustment) + "px";
+				}
 				
-				if (cueObject.alignment = "middle") {
-					
+				// Work out how to shrink the available render area
+				// If the top of the cue sits in the bottom 50% of the render area,
+				// the render area is shrunk from the bottom.
+				// Otherwise, the render area is shrunk from the top.
+				// The render area shrinks regardless of cue size.
+				if ((cueY - videoElement._captionator_availableCueArea.top) >= (videoElement._captionator_availableCueArea.height/2)) {
+					videoElement._captionator_availableCueArea.height = (cueY - videoElement._captionator_availableCueArea.top);
+				} else {
+					videoElement._captionator_availableCueArea.top = cueY + cueHeight;
 				}
 			}
 			
