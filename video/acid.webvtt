@@ -1,0 +1,114 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:10.000
+This WebVTT acid test will verify rendering and parsing compatibility with the WebVTT standard.
+
+2
+00:00:10.000 --> 00:00:15.000
+<c.title><b>Test 1:</b> Unicode Support</c.title>
+
+3
+00:00:15.000 --> 00:00:20.000
+ÀÁÂÃĀĂȦÄẢÅǍȀȂĄẠḀẦẤẪẨẰẮẴẲǠǞǺẬẶÆǼǢ
+
+4
+00:00:20.000 --> 00:00:25.000
+East Asian Characters: だらり帯の結び方
+
+5
+00:00:25.000 --> 00:00:35.000
+<c.title><b>Test 2:</b> WebVTT Timestamp Support</c.title>
+
+6
+00:00:35.000 --> 00:00:45.000
+<00:00:35.000>This <00:00:36.000>text <00:00:37.000>should <00:00:38.000>appear <00:00:39.000>word <00:00:40.000>by <00:00:41.000>word
+<00:00:42.000>with <00:00:43.000>second <00:00:44.000>intervals.
+
+7
+00:00:45.000 --> 00:00:50.000
+<00:00:45.000>This <00:00:45.100>text <00:00:45.200>should <00:00:45.300>appear <00:00:45.400>with <00:00:45.500>tenth <00:00:45.600>of <00:00:45.700>a <00:00:45.800>second <00:00:45.900>intervals.
+
+8
+00:00:50.000 --> 00:00:55.000
+<00:00:50.000>This <00:00:50.010>text <00:00:50.020>should <00:00:50.030>appear <00:00:50.040>with <00:00:50.050>100th <00:00:50.060>of <00:00:50.070>a <00:00:50.080>second <00:00:50.090>intervals.
+
+9
+00:00:55.000 --> 00:01:00.000
+<00:00:55.000>This <00:00:55.001>text <00:00:55.002>should <00:00:55.003>appear <00:00:55.004>with <00:00:55.005>1000th <00:00:55.006>of <00:00:55.007>a <00:00:55.008>second <00:00:55.009>intervals.
+
+10
+00:01:00.000 --> 00:01:10.000
+<c.title><b>Test 3:</b> WebVTT Formatting spans</c.title>
+
+11
+00:01:10.000 --> 00:01:15.000
+<b>This text should be bold</b>
+<i>This text should be italic</i>
+<u>This text should be underlined</u>
+
+12
+00:01:15.000 --> 00:01:25.000
+<c.title><b>Test 4:</b> WebVTT Ruby spans</c.title>
+
+13
+00:01:25.000 --> 00:01:30.000
+<ruby>私<rt>わたし</rt></ruby>たち
+
+14
+00:01:30.000 --> 00:01:40.000
+<c.title><b>Test 4:</b> Ignoring malformed cues</c.title>
+
+MALFORMEDCUE -->
+This text is from a malformed cue. It should not be processed.
+
+# 15
+# 00:01:30.000 --> 00:01:40.000
+# This text is from a malformed cue. It should not be processed.
+
+15
+00:01:40.000 --> 00:01:50.000
+<c.title><b>Test 5:</b> Cue alignment</c.title>
+
+16
+00:01:50.000 --> 00:01:55.000 A:start
+This cue should be aligned to the <b>start</b> position.
+
+17
+00:01:50.000 --> 00:01:55.000 A:end
+This cue should be aligned to the <b>end</b> position.
+
+18
+00:01:50.000 --> 00:01:55.000 A:middle
+This cue should be aligned to the <b>middle</b> position.
+
+19
+00:01:55.000 --> 00:02:05.000
+<c.title><b>Test 5.5:</b> Cue alignment with BIDI/RTL text</c.title>
+
+20
+00:02:05.000 --> 00:02:10.000 A:start
+بداية النص محاذاة
+<b>(start)</b>
+
+21
+00:02:05.000 --> 00:02:10.000 A:end
+نهاية النص محاذاة
+<b>(end)</b>
+
+22
+00:02:05.000 --> 00:02:10.000 A:middle
+محاذاة النص الأوسط
+<b>(middle)</b>
+
+23
+00:02:10.000 --> 00:02:20.000
+<c.title><b>Test 6:</b> Vertical and Vertical-LR cue direction</c.title>
+
+24
+00:02:20.000 --> 00:02:25.000 D:vertical
+Vertical Cue 一二三四五六七八九十
+
+23
+00:02:20.000 --> 00:02:25.000 D:vertical-lr
+Vertical-LR Cue 一二三四五六七八九十

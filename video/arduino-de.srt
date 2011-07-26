@@ -1,6 +1,6 @@
 1
 00:00:13,000 --> 00:00:016,100
-Ich hörte von dieser <span class='arduino'>arduino</span> Projekt, und ich sah es online -
+Ich hörte von dieser <c.arduino>arduino</c> Projekt, und ich sah es online -
 
 2
 00:00:16,100 --> 00:00:20,100
@@ -28,7 +28,7 @@ Für mich ist das darum, den Menschen die nötigen Informationen, um die Hardwar
 
 8
 00:01:02,000 --> 00:01:08,000
-Ich bin wirklich begeistert von <span class="arduino">arduino</span>... weil ich wirklich über Verständnis mehr darüber, wie die Welt funktioniert.
+Ich bin wirklich begeistert von <c.arduino>arduino</c>... weil ich wirklich über Verständnis mehr darüber, wie die Welt funktioniert.
 
 9
 00:01:08,700 --> 00:01:14,463
@@ -56,11 +56,11 @@ So ... mussten wir die Schnittstelle zu vereinfachen. Und das ist der Beginn ein
 
 15
 00:01:47,700 --> 00:01:52,000
-<span class="arduino title">Arduino: The Documentary</span>
+<c.arduino.title>Arduino: The Documentary</c>
 
 16
 00:01:52,000 --> 00:01:55,800
-Das allererste, was ich versuchte, mit einem <span class="arduino">arduino</span> einen 3D-Drucker laufen war zu tun.
+Das allererste, was ich versuchte, mit einem <c.arduino>arduino</c> einen 3D-Drucker laufen war zu tun.
 
 17
 00:01:55,800 --> 00:01:58,500
@@ -68,7 +68,7 @@ Das allererste, was ich versuchte, mit einem <span class="arduino">arduino</span
 
 18
 00:01:58,500 --> 00:02:00,100
-Also machen wir mit den Puppen <span class="arduino">Arduino</span> ...
+Also machen wir mit den Puppen <c.arduino>Arduino</c> ...
 
 19
 00:02:00,100 --> 00:02:04,120
@@ -88,7 +88,7 @@ Viele Menschen haben gebaut Hubschrauber mit vier oder sechs Motoren.
 
 23
 00:02:16,300 --> 00:02:22,100
-Plötzlich kam eine Meldung sagt uns, dass <span class="arduino">arduino</span> ...
+Plötzlich kam eine Meldung sagt uns, dass <c.arduino>arduino</c> ...
 
 24
 00:02:22,100 --> 00:02:25,000
@@ -100,7 +100,7 @@ Es endete als ein 17-Jähriger machte den Satelliten.
 
 26
 00:02:30,000 --> 00:02:45,000
-<span class="arduino title">Arduino: The Documentary</span>
+<c.arduino.title>Arduino: The Documentary</c>
 
 27
 00:02:45,000 --> 00:02:50,000

@@ -18,3 +18,13 @@
 	font-weight: bolder;
 	color: red;
 }
+
+q.voice:before {
+	content: attr(title);
+	color:red;
+	margin-right: 0.5em;
+}
+
+q.voice:after {
+	content: "";
+}

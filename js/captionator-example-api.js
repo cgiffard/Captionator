@@ -62,7 +62,6 @@ var generateMediaControls = function(videoElement) {
 						toggleTD.appendChild(trackToggle);
 						
 						trackToggle.addEventListener("change",function(eventData) {
-							console.log("Checked?",this.checked);
 							currentTrack.mode = [0,2][Number(this.checked)];
 							modeTD.innerHTML = ["Not Showing","Hidden","Showing"][currentTrack.mode];
 						},false);

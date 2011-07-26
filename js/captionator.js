@@ -11,6 +11,14 @@
 
 (function() {
 	"use strict";
+	
+	// Variables you might want to tweak
+	var minimumFontSize = 10;				// We don't want the type getting any smaller than this.
+	var minimumLineHeight = 16;				// As above, in points
+	var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
+	var lineHeightRatio = 1.5;				// Caption line height is 1.3 times the font size
+	var cueBackgroundColour	= [0,0,0,0.5];	// R,G,B,A
+	
 	var captionator = {
 		/*
 			Subclassing DOMException so we can reliably throw it without browser intervention. This is quite hacky. See SO post:
@@ -375,6 +383,10 @@
 						});
 					}
 				}
+				
+				if (this.linePosition.match(/\%/)) {
+					this.snapToLines = false;
+				}
 			
 				// Functions defined by spec (getters, kindof)
 				this.getCueAsSource = function getCueAsSource() {
@@ -608,10 +620,11 @@
 										// Don't generate text from the token if it has no contents
 										if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
 											if (cueChunk.token === "v") {
-												compositeHTML +="<span data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
-																"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "'>" +
+												compositeHTML +="<q data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
+																"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "' " + 
+																"title=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\">" +
 																processLayer(cueChunk.children) +
-																"</span>";
+																"</q>";
 											} else if(cueChunk.token === "c") {
 												compositeHTML +="<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
 																processLayer(cueChunk.children) +
@@ -944,7 +957,6 @@
 			var compositeActiveCues = [];
 			var cuesChanged = false;
 			var activeCueIDs = [];
-			var renderDocumentFragment = null;
 			var cueSortArray = [];
 		
 			// Rough and ready array comparison function we can use to easily determine
@@ -1002,7 +1014,6 @@
 				videoElement.containerObject.innerHTML = "";
 			
 				// Now we render the cues
-				renderDocumentFragment = document.createDocumentFragment();
 				compositeActiveCues.forEach(function(cue) {
 					var cueNode = document.createElement("div");
 					cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
@@ -1010,7 +1021,6 @@
 					cueNode.innerHTML = cue.text.toString(currentTime);
 					videoElement.containerObject.appendChild(cueNode);
 					captionator.styleCue(cueNode,cue,videoElement);
-					//renderDocumentFragment.appendChild(cueNode);
 				});
 			}
 		},
@@ -1193,15 +1203,11 @@
 		
 		*/
 		"styleCue": function(DOMNode, cueObject, videoElement) {
-			var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
-			var minimumLineHeight = 16;				// As above, in points
-			var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
-			var lineHeightRatio = 1.3;				// Caption line height is 1.8 times the font size
-			
 			// Variables for maintaining render calculations
-			var cueX = 0, cueY = 0, cueWidth = 0, cueHeight = 0, cueSize, cueAlignment, cuePadding = 0;
+			var cueX = 0, cueY = 0, cueWidth = 0, cueHeight = 0, cueSize, cueAlignment, cuePaddingLR = 0, cuePaddingTB = 0;
 			var baseFontSize, baseLineHeight;
-			var videoHeightInLines, videoWidthInLines, pixelLineHeight;
+			var videoHeightInLines, videoWidthInLines, pixelLineHeight, verticalPixelLineHeight;
+			var options = videoElement.captionatorOptions || {};
 			
 			// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 			// (sadly, all the good ones!)
@@ -1246,39 +1252,47 @@
 			
 			if (!videoElement._captionator_availableCueArea) {
 				videoElement._captionator_availableCueArea = {
-					"height": videoMetrics.height,
-					"width": videoMetrics.width,
+					"bottom": (videoMetrics.height-videoMetrics.controlHeight),
+					"right": videoMetrics.width,
 					"top": 0,
-					"left": 0
+					"left": 0,
+					"height": (videoMetrics.height-videoMetrics.controlHeight),
+					"width": videoMetrics.width
 				};
 			}
-			cueObject.snapToLines = false;
+			
 			// Calculate font metrics
 			baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
 			baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
 			baseLineHeight = Math.floor(baseFontSize * lineHeightRatio);
 			baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
-			pixelLineHeight = ((baseLineHeight/72)*96);
+			pixelLineHeight = Math.ceil((baseLineHeight/72)*96);
+			verticalPixelLineHeight = pixelLineHeight;
+			
+			if (pixelLineHeight * Math.floor(videoMetrics.height / pixelLineHeight) < videoMetrics.height) {
+				pixelLineHeight = Math.floor(videoMetrics.height / Math.floor(videoMetrics.height / pixelLineHeight));
+				baseLineHeight = Math.ceil((pixelLineHeight/96)*72);
+			}
+			
+			if (pixelLineHeight * Math.floor(videoMetrics.width / pixelLineHeight) < videoMetrics.width) {
+				verticalPixelLineHeight = Math.ceil(videoMetrics.width / Math.floor(videoMetrics.width / pixelLineHeight));
+			}
 			
 			// Calculate render area height & width in lines
-			videoHeightInLines = Math.floor(videoMetrics.height / pixelLineHeight);
-			videoWidthInLines = Math.floor(videoMetrics.width / pixelLineHeight);
+			videoHeightInLines = Math.floor(videoElement._captionator_availableCueArea.height / pixelLineHeight);
+			videoWidthInLines = Math.floor(videoElement._captionator_availableCueArea.width / verticalPixelLineHeight);
 			
 			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""),10);
+			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""),10);
 			cueSize = cueSize <= 100 ? cueSize : 100;
-			cuePadding = Math.floor(videoMetrics.height * 0.01);
+			cuePaddingLR = cueObject.direction === "horizontal" ? Math.floor(videoMetrics.width * 0.01) : 0;
+			cuePaddingTB = cueObject.direction === "horizontal" ? 0 : Math.floor(videoMetrics.height * 0.01);
 			
 			if (cueObject.linePosition === "auto") {
-				// 98% of the available render area height leaves us a little bit of a gap at the
-				// bottom, left, or right (depending on the direction)
-				// Otherwise, if snap to lines is enabled (which it will be in most cases)
-				// We just choose the bottom/left/right-most available line for ourselves.
-				
-				if (cueObject.snapToLines) {
-					cueObject.linePosition = cueObject.direction === "horizontal" ? videoHeightInLines : videoWidthInLines;
-				} else {
-					cueObject.linePosition = 98;
-				}
+				cueObject.linePosition = cueObject.direction === "horizontal" ? videoHeightInLines : videoWidthInLines;
+			} else if (String(cueObject.linePosition).match(/\%/)) {
+				cueObject.snapToLines = false;
+				cueObject.linePosition = parseFloat(String(cueObject.linePosition).replace(/\%/ig,""),10);
 			}
 			
 			if (cueObject.direction === "horizontal") {
@@ -1286,64 +1300,68 @@
 				cueWidth = videoElement._captionator_availableCueArea.width * (cueSize/100);
 				
 				if (cueObject.textPosition === "auto") {
-					cueX = ((videoElement._captionator_availableCueArea.width - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
+					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 				} else {
 					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
-					cueX = ((videoElement._captionator_availableCueArea.width - cueWidth) * (cueObject.textPosition/100)) + 
+					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (cueObject.textPosition/100)) + 
 							videoElement._captionator_availableCueArea.left;
 				}
 				
 				if (cueObject.snapToLines === true) {
-					cueY = ((videoHeightInLines-2) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
+					cueY = ((videoHeightInLines-1) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
 				} else {
-					cueY = ((videoElement._captionator_availableCueArea.height * (cueObject.linePosition/100)) +
+					cueY = ((videoElement._captionator_availableCueArea.bottom * (cueObject.linePosition/100)) +
 							videoElement._captionator_availableCueArea.top) - (pixelLineHeight + (cuePadding*2));
 				}
 				
 			} else {
-				cueWidth = pixelLineHeight;
-				cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100);
-				
-				if (cueObject.textPosition === "auto") {
-					cueY = (videoElement._captionator_availableCueArea.height - cueHeight) / 2;
-				} else {
-					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
-					cueX = (videoElement._captionator_availableCueArea.width - cueWidth) * (cueObject.textPosition/100);
-				}
-				
-				if (cueObject.snapToLines === true) {
-					if (cueObject.direction == "vertical-lr") {
-						cueY = ((renderAreaHeightInLines-2) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
-					} else {
-						cueY = (videoElement._captionator_availableCueArea.top + videoElement._captionator_availableCueArea.height) -
-								((renderAreaHeightInLines-1) * pixelLineHeight);
-					}
-				} else {
-					if (cueObject.direction == "vertical-lr") {
-						
-					} else {
-						
-					}
-				}
-				
+				// cueWidth = pixelLineHeight;
+				// cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100);
+				// 
+				// if (cueObject.textPosition === "auto") {
+				// 	cueY = (videoElement._captionator_availableCueArea.bottom - cueHeight) / 2;
+				// } else {
+				// 	cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
+				// 	cueX = (videoElement._captionator_availableCueArea.right - cueWidth) * (cueObject.textPosition/100);
+				// }
+				// 
+				// if (cueObject.snapToLines === true) {
+				// 	if (cueObject.direction == "vertical-lr") {
+				// 		cueY = ((videoHeightInLines-2) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
+				// 	} else {
+				// 		cueY = (videoElement._captionator_availableCueArea.top + videoElement._captionator_availableCueArea.bottom) -
+				// 				((videoHeightInLines-1) * pixelLineHeight);
+				// 	}
+				// } else {
+				// 	if (cueObject.direction == "vertical-lr") {
+				// 		
+				// 	} else {
+				// 		
+				// 	}
+				// }
 			}
 			
-			if (cueObject.direction === "rtl") {
+			if (captionator.checkDirection(String(cueObject.text)) === "rtl") {
+				cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment];
+			} else {	
 				cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
-			} else {
-				cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment]
 			}
+			
+			// cueBackgroundColour = [Math.floor(Math.random()*200),Math.floor(Math.random()*200),Math.floor(Math.random()*200),0.5];
 			
 			captionator.applyStyles(DOMNode,{
 				"position": "absolute",
+				"overflow": "hidden",
 				"width": cueWidth + "px",
 				"height": cueHeight + "px",
 				"top": cueY + "px",
 				"left": cueX + "px",
-				"padding": cuePadding + "px",
+				"padding": cuePaddingTB + "px " + cuePaddingLR + "px",
 				"textAlign": cueAlignment,
-				"backgroundColor": "rgba(0,0,0,0.5)",
-				"direction": captionator.checkDirection(String(cueObject.text))
+				"backgroundColor": "rgba(" + cueBackgroundColour.join(",") + ")",
+				"direction": captionator.checkDirection(String(cueObject.text)),
+				"lineHeight": baseLineHeight + "pt",
+				"boxSizing": "border-box"
 			});
 			
 			if (cueObject.direction === "vertical" || cueObject.direction === "vertical-lr") {
@@ -1358,27 +1376,145 @@
 				
 			} else {
 				// Now shift cue up if required to ensure it's all visible
-				if ((DOMNode.scrollHeight-1) > (DOMNode.offsetHeight + (videoMetrics.height*0.02))) {
-					cueHeight = (DOMNode.scrollHeight + (videoMetrics.height*0.01));
-					var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
-					DOMNode.style.height = cueHeight + "px";
-					DOMNode.style.top = (parseFloat(DOMNode.style.top.replace(/[^\d\.]/ig,""),10) - upwardAjustment) + "px";
+				if (DOMNode.scrollHeight > DOMNode.offsetHeight * 1.2) {
+					if (cueObject.snapToLines) {
+						var upwardAjustmentInLines = 0;
+						while (DOMNode.scrollHeight > DOMNode.offsetHeight * 1.2) {
+							cueHeight += pixelLineHeight;
+							DOMNode.style.height = cueHeight + "px";
+							upwardAjustmentInLines ++;
+						}
+						
+						cueY = cueY - (upwardAjustmentInLines*pixelLineHeight);
+						DOMNode.style.top = cueY + "px";
+					} else {
+						// BUGGY
+						var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
+						cueHeight = (DOMNode.scrollHeight + (videoMetrics.height*0.01));
+						cueY -= upwardAjustment;
+						
+						DOMNode.style.height = cueHeight + "px";
+						DOMNode.style.top = cueY + "px";
+					}
 				}
-				
+							
 				// Work out how to shrink the available render area
-				// If the top of the cue sits in the bottom 50% of the render area,
-				// the render area is shrunk from the bottom.
-				// Otherwise, the render area is shrunk from the top.
-				// The render area shrinks regardless of cue size.
-				if ((cueY - videoElement._captionator_availableCueArea.top) >= (videoElement._captionator_availableCueArea.height/2)) {
-					videoElement._captionator_availableCueArea.height = (cueY - videoElement._captionator_availableCueArea.top);
+				// If subtracting from the bottom works out to a larger area, subtract from the bottom.
+				// Otherwise, subtract from the top.
+				if (((cueY - videoElement._captionator_availableCueArea.top) - videoElement._captionator_availableCueArea.top) >=
+					(videoElement._captionator_availableCueArea.bottom - (cueY + cueHeight))) {
+					
+					videoElement._captionator_availableCueArea.bottom = cueY;
 				} else {
 					videoElement._captionator_availableCueArea.top = cueY + cueHeight;
 				}
+				
+				videoElement._captionator_availableCueArea.height =
+					videoElement._captionator_availableCueArea.bottom - 
+					videoElement._captionator_availableCueArea.top;
 			}
 			
-			// console.log("styling node",DOMNode);
-			
+			// DEBUG FUNCTIONS
+			// This function can be used for debugging WebVTT captions. It will not be
+			// included in production versions of Captionator.
+			// -----------------------------------------------------------------------
+			if (options.debugMode) {
+				var debugCanvas, debugContext;
+				var generateDebugCanvas = function() {
+					if (!debugCanvas) {
+						if (videoElement._captionatorDebugCanvas) {
+							debugCanvas = videoElement._captionatorDebugCanvas;
+							debugContext = videoElement._captionatorDebugContext;
+						} else {
+							debugCanvas = document.createElement("canvas");
+							debugCanvas.setAttribute("width",videoMetrics.width);
+							debugCanvas.setAttribute("height",videoMetrics.height - videoMetrics.controlHeight);
+							document.body.appendChild(debugCanvas);
+							captionator.applyStyles(debugCanvas,{
+								"position": "absolute",
+								"top": videoMetrics.top + "px",
+								"left": videoMetrics.left + "px",
+								"width": videoMetrics.width + "px",
+								"height": (videoMetrics.height - videoMetrics.controlHeight) + "px",
+								"zIndex": 3000
+							});
+					
+							debugContext = debugCanvas.getContext("2d");
+							videoElement._captionatorDebugCanvas = debugCanvas;
+							videoElement._captionatorDebugContext = debugContext;
+						}
+					}
+				};
+				
+				var clearDebugCanvas = function() {
+					generateDebugCanvas();
+					debugCanvas.setAttribute("width",videoMetrics.width);
+				};
+				
+				var drawLines = function() {
+					var lineIndex;
+					
+					// Set up canvas for drawing debug information
+					generateDebugCanvas();
+					
+					debugContext.strokeStyle = "rgba(255,0,0,0.5)";
+					debugContext.lineWidth = 1;
+					
+					// Draw horizontal line dividers
+					debugContext.beginPath();
+					for (lineIndex = 0; lineIndex < videoHeightInLines; lineIndex ++) {
+						debugContext.moveTo(0.5,(lineIndex*pixelLineHeight)+0.5);
+						debugContext.lineTo(videoMetrics.width,(lineIndex*pixelLineHeight)+0.5);
+					}
+					
+					debugContext.closePath();
+					debugContext.stroke();
+					debugContext.beginPath();
+					debugContext.strokeStyle = "rgba(0,255,0,0.5)";
+					
+					// Draw vertical line dividers
+					// Right to left, vertical
+					for (lineIndex = videoWidthInLines; lineIndex >= 0; lineIndex --) {
+						debugContext.moveTo((videoMetrics.width-(lineIndex*verticalPixelLineHeight))-0.5,-0.5);
+						debugContext.lineTo((videoMetrics.width-(lineIndex*verticalPixelLineHeight))-0.5,videoMetrics.height);
+					}
+					
+					debugContext.closePath();
+					debugContext.stroke();
+					debugContext.beginPath();
+					debugContext.strokeStyle = "rgba(255,255,0,0.5)";
+					
+					// Draw vertical line dividers
+					// Left to right, vertical
+					for (lineIndex = 0; lineIndex <= videoWidthInLines; lineIndex ++) {
+						debugContext.moveTo((lineIndex*verticalPixelLineHeight)+0.5,-0.5);
+						debugContext.lineTo((lineIndex*verticalPixelLineHeight)+0.5,videoMetrics.height);
+					}
+					
+					debugContext.stroke();
+					
+					videoElement.linesDrawn = true;
+				};
+				
+				var drawAvailableArea = function() {
+					generateDebugCanvas();
+					
+					debugContext.fillStyle = "rgba(100,100,255,0.5)";
+					
+					debugContext.fillRect(
+							videoElement._captionator_availableCueArea.left,
+							videoElement._captionator_availableCueArea.top,
+							videoElement._captionator_availableCueArea.right,
+							videoElement._captionator_availableCueArea.bottom);
+					debugContext.stroke();
+					
+				};
+				
+				clearDebugCanvas();
+				drawAvailableArea();
+				drawLines();
+			}
+			// END DEBUG FUNCTIONS
 		},
 		/*
 			captionator.styleCueCanvas(VideoNode)
@@ -1394,13 +1530,6 @@
 		
 		*/
 		"styleCueCanvas": function(videoElement) {
-			// Variables you might want to tweak
-			var minimumFontSize = 11;				// We don't want the type getting any smaller than this.
-			var minimumLineHeight = 16;				// As above, in points
-			var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
-			var lineHeightRatio = 1.3;				// Caption line height is 1.3 times the font size
-		
-			// Internal variables
 			var baseFontSize, baseLineHeight;
 			var containerObject;
 			var containerID;
@@ -1490,7 +1619,7 @@
 			var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 			var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 			var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
-			var SRTChunkTimestampParser	= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
+			var SRTChunkTimestampParser	= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
 			var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
 			var LRCTimestampParser		= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
 
@@ -1551,13 +1680,13 @@
 											currentToken.match(/^<c[a-z0-9\-\_\.]+>/)				||
 											currentToken.match(/^<(b|i|u|ruby|rt)>/))				||
 										options.sanitiseCueHTML !== false) {
-									
+										
 										var tmpObject = {
 											"token":	currentToken.replace(/[<\/>]+/ig,"").split(/[\s\.]+/)[0],
 											"rawToken":	currentToken,
 											"children":	[]
 										};
-									
+										
 										if (tmpObject.token === "v") {
 											tmpObject.voice = currentToken.match(/^<v\s*([^>]+)>/i)[1];
 										} else if (tmpObject.token === "c") {
@@ -1566,7 +1695,7 @@
 																	.split(/[\.]+/ig)
 																	.slice(1)
 																	.filter(hasRealTextContent);
-										} else if (!!(chunkTimestamp = tmpObject.token.match(SRTChunkTimestampParser))) {
+										} else if (!!(chunkTimestamp = tmpObject.rawToken.match(SRTChunkTimestampParser))) {
 											cueStructure.isTimeDependent = true;
 											timeData = chunkTimestamp.slice(1);
 											tmpObject.timeIn =	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours

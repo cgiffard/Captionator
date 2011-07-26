@@ -1,10 +1,10 @@
 1
 00:00:00,000 --> 00:00:10,100
-NB: As a speaker of Japanese, I am fully aware that these subtitles range from subtly to horribly wrong, but I was too lazy to do anything but a machine translation.
+NB: As a Japanese speaker, I am fully aware that these subtitles range from subtly to horribly wrong, but I was too lazy to do anything but a machine translation.
 
 2
 00:00:13,000 --> 00:00:016,100
-私はこの<span class="arduino">arduino</span>のプロジェクトについて聞いて、私はそれをオンラインで見て-
+私はこの<c.arduino>arduino</c>のプロジェクトについて聞いて、私はそれをオンラインで見て-
 
 3
 00:00:16,100 --> 00:00:20,100
@@ -32,7 +32,7 @@ NB: As a speaker of Japanese, I am fully aware that these subtitles range from s
 
 9
 00:01:02,000 --> 00:01:08,000
-私は本当に<span class="arduino">arduino</span>の情熱よ...私は本当にに関する詳細については、世界はどのように動作するか理解する気だ。
+私は本当に<c.arduino>arduino</c>の情熱よ...私は本当にに関する詳細については、世界はどのように動作するか理解する気だ。
 
 10
 00:01:08,700 --> 00:01:14,463
@@ -60,11 +60,11 @@ NB: As a speaker of Japanese, I am fully aware that these subtitles range from s
 
 16
 00:01:47,700 --> 00:01:52,000
-<span class="arduino title">アードウイーノ: ザ・ドキュメンタリー</span>
+<c.arduino.title>アードウイーノ: ザ・ドキュメンタリー</c>
 
 17
 00:01:52,000 --> 00:01:55,800
-<span class="arduino">arduino</span>は3Dプリンタを実行されたと私が試した、非常に最初にすること。
+<c."arduino">arduino</c>は3Dプリンタを実行されたと私が試した、非常に最初にすること。
 
 18
 00:01:55,800 --> 00:01:58,500
@@ -72,7 +72,7 @@ NB: As a speaker of Japanese, I am fully aware that these subtitles range from s
 
 19
 00:01:58,500 --> 00:02:00,100
-そこで、<span class="arduino">arduino</span>ので人形を作る...
+そこで、<c.arduino>arduino</c>ので人形を作る...
 
 20
 00:02:00,100 --> 00:02:04,120
@@ -92,7 +92,7 @@ NB: As a speaker of Japanese, I am fully aware that these subtitles range from s
 
 24
 00:02:16,300 --> 00:02:22,100
-突然のメッセージが私たちをことを伝える到着<span class="arduino">arduino</span>の...
+突然のメッセージが私たちをことを伝える到着<c.arduino>arduino</c>の...
 
 25
 00:02:22,100 --> 00:02:25,000
@@ -104,7 +104,7 @@ NB: As a speaker of Japanese, I am fully aware that these subtitles range from s
 
 27
 00:02:30,000 --> 00:02:45,000
-<span class="arduino title">アードウイーノ: ザ・ドキュメンタリー</span>
+<c.arduino.title>アードウイーノ: ザ・ドキュメンタリー</c>
 
 28
 00:02:45,000 --> 00:02:50,000
