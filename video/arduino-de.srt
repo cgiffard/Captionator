@@ -1,107 +1,109 @@
+WEBVTT
+
 1
-00:00:13,000 --> 00:00:016,100
+00:00:13.000 --> 00:00:016.100
 Ich hörte von dieser <c.arduino>arduino</c> Projekt, und ich sah es online -
 
 2
-00:00:16,100 --> 00:00:20,100
+00:00:16.100 --> 00:00:20.100
 - und ich sagte "Wow! eine Menge Leute fangen an, darüber zu reden. Ich check it out!"
 
 3
-00:00:20,100 --> 00:00:29,000
+00:00:20.100 --> 00:00:29.000
 Da wollten wir ein Werkzeug für unsere Schüler, die moderner als das, was auf dem Markt in diesem Augenblick war zu machen.
 
 4
-00:00:30,100 --> 00:00:38,306
+00:00:30.100 --> 00:00:38.306
 Für mich war es ein Fall von - das ist ein Tool, das sehe ich mit <em>mich</em> könnte, und deshalb konnte ich in tatsächlich helfen, um es aus zu einer weiteren Welt zu glauben.
 
 5
-00:00:38,500 --> 00:00:44,500
+00:00:38.500 --> 00:00:44.500
 Open-Source-Hardware um wieder die Kontrolle über, was in Sachen.
 
 6
-00:00:49,500 --> 00:00:55,000
+00:00:49.500 --> 00:00:55.000
 Wir wollten, dass es Open Source sein - so könnte jeder kommen, helfen und dazu beizutragen.
 
 7
-00:00:55,000 --> 00:01:02,000
+00:00:55.000 --> 00:01:02.000
 Für mich ist das darum, den Menschen die nötigen Informationen, um die Hardware für sich selbst neu zu erstellen.
 
 8
-00:01:02,000 --> 00:01:08,000
+00:01:02.000 --> 00:01:08.000
 Ich bin wirklich begeistert von <c.arduino>arduino</c>... weil ich wirklich über Verständnis mehr darüber, wie die Welt funktioniert.
 
 9
-00:01:08,700 --> 00:01:14,463
+00:01:08.700 --> 00:01:14.463
 Mein Berater sagte, dass ... es käme der Tag, wenn es mehr Computer als Menschen.
 
 10
-00:01:14,463 --> 00:01:20,100
+00:01:14.463 --> 00:01:20.100
 Wenn jeder Computer hatte eine Tastatur und Maus ... und einem Bildschirm, wäre es unmöglich, unser Leben zu Befehl.
 
 11
-00:01:24,100 --> 00:01:29,300
+00:01:24.100 --> 00:01:29.300
 Dann begannen wir, um herauszufinden, dass es einen Weg, um ein sehr schönes Ökosystem von Menschen bekommen ...
 
 12
-00:01:29,300 --> 00:01:33,400
+00:01:29.300 --> 00:01:33.400
 ... teil und machen Erweiterungen ... So Derivate ... und hilft ...
 
 13
-00:01:33,400 --> 00:01:41,400
+00:01:33.400 --> 00:01:41.400
 Es ist also eine Art, wie ich bin einen Schritt auf eine Leiter. Und dann bin ich anderen Menschen helfen weiter gehen die Leiter hinauf.
 
 14
-00:01:41,400 --> 00:01:47,700
+00:01:41.400 --> 00:01:47.700
 So ... mussten wir die Schnittstelle zu vereinfachen. Und das ist der Beginn einer völlig neuen Art der Betrachtung ... Berechnung.
 
 15
-00:01:47,700 --> 00:01:52,000
+00:01:47.700 --> 00:01:52.000
 <c.arduino.title>Arduino: The Documentary</c>
 
 16
-00:01:52,000 --> 00:01:55,800
+00:01:52.000 --> 00:01:55.800
 Das allererste, was ich versuchte, mit einem <c.arduino>arduino</c> einen 3D-Drucker laufen war zu tun.
 
 17
-00:01:55,800 --> 00:01:58,500
+00:01:55.800 --> 00:01:58.500
 ... so dass ich bewegte Kuchen und Torten ... Singen
 
 18
-00:01:58,500 --> 00:02:00,100
+00:01:58.500 --> 00:02:00.100
 Also machen wir mit den Puppen <c.arduino>Arduino</c> ...
 
 19
-00:02:00,100 --> 00:02:04,120
+00:02:00.100 --> 00:02:04.120
 Einer meiner Studenten baut eine Gitarre.
 
 20
-00:02:04,120 --> 00:02:06,200
+00:02:04.120 --> 00:02:06.200
 Hier gibt's a. .. hier ist ein Roboter ...
 
 21
-00:02:06,200 --> 00:02:10,400
+00:02:06.200 --> 00:02:10.400
 Wenn ich kippen, sehen Sie das Licht nach links geht - wenn ich dich gehen ...
 
 22
-00:02:10,400 --> 00:02:13,400
+00:02:10.400 --> 00:02:13.400
 Viele Menschen haben gebaut Hubschrauber mit vier oder sechs Motoren.
 
 23
-00:02:16,300 --> 00:02:22,100
+00:02:16.300 --> 00:02:22.100
 Plötzlich kam eine Meldung sagt uns, dass <c.arduino>arduino</c> ...
 
 24
-00:02:22,100 --> 00:02:25,000
+00:02:22.100 --> 00:02:25.000
 Und natürlich sagte ich OK ... das ist einfach zu viel.
 
 25
-00:02:25,000 --> 00:02:29,000
+00:02:25.000 --> 00:02:29.000
 Es endete als ein 17-Jähriger machte den Satelliten.
 
 26
-00:02:30,000 --> 00:02:45,000
+00:02:30.000 --> 00:02:45.000
 <c.arduino.title>Arduino: The Documentary</c>
 
 27
-00:02:45,000 --> 00:02:50,000
+00:02:45.000 --> 00:02:50.000
 <a href="http://www.arduinothedocumentary.org">www.arduinothedocumentary.org</a>

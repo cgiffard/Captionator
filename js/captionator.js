@@ -195,7 +195,7 @@
 						ajaxObject.onreadystatechange = function (eventData) {
 							if (ajaxObject.readyState === 4) {
 								if(ajaxObject.status === 200) {
-									var TrackProcessingOptions = currentTrackElement.videoNode.captionatorOptions || {};
+									var TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
 									if (currentTrackElement.kind === "metadata") {
 										// People can load whatever data they please into metadata tracks.
 										// Don't process it.
@@ -785,7 +785,7 @@
 			options = options instanceof Object? options : {};
 		
 			if (!videoElement.captioned) {
-				videoElement.captionatorOptions = options;
+				videoElement._captionatorOptions = options;
 				videoElement.className += (videoElement.className.length ? " " : "") + "captioned";
 				videoElement.captioned = true;
 			
@@ -952,7 +952,7 @@
 		*/
 		"rebuildCaptions": function(videoElement) {
 			var trackList = videoElement.tracks || [];
-			var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
+			var options = videoElement._captionatorOptions instanceof Object ? videoElement._captionatorOptions : {};
 			var currentTime = videoElement.currentTime;
 			var compositeActiveCues = [];
 			var cuesChanged = false;
@@ -1011,7 +1011,7 @@
 				
 				// Get the canvas ready if it isn't already
 				captionator.styleCueCanvas(videoElement);
-				videoElement.containerObject.innerHTML = "";
+				videoElement._containerObject.innerHTML = "";
 			
 				// Now we render the cues
 				compositeActiveCues.forEach(function(cue) {
@@ -1019,7 +1019,7 @@
 					cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
 					cueNode.className = "captionator-cue";
 					cueNode.innerHTML = cue.text.toString(currentTime);
-					videoElement.containerObject.appendChild(cueNode);
+					videoElement._containerObject.appendChild(cueNode);
 					captionator.styleCue(cueNode,cue,videoElement);
 				});
 			}
@@ -1042,7 +1042,7 @@
 		*/
 		"synchroniseMediaElements": function(videoElement) {
 			var trackList = videoElement.mediaTracks || [];
-			var options = videoElement.captionatorOptions instanceof Object ? videoElement.captionatorOptions : {};
+			var options = videoElement._captionatorOptions instanceof Object ? videoElement._captionatorOptions : {};
 			var currentTime = videoElement.currentTime;
 			var synchronisationThreshold = 0.5; // How many seconds of drift will be tolerated before resynchronisation?
 		
@@ -1205,16 +1205,19 @@
 		"styleCue": function(DOMNode, cueObject, videoElement) {
 			// Variables for maintaining render calculations
 			var cueX = 0, cueY = 0, cueWidth = 0, cueHeight = 0, cueSize, cueAlignment, cuePaddingLR = 0, cuePaddingTB = 0;
-			var baseFontSize, baseLineHeight;
-			var videoHeightInLines, videoWidthInLines, pixelLineHeight, verticalPixelLineHeight;
-			var options = videoElement.captionatorOptions || {};
+			var baseFontSize, basePixelFontSize, baseLineHeight;
+			var videoHeightInLines, videoWidthInLines, pixelLineHeight, verticalPixelLineHeight, charactersPerLine = 0, characterCount = 0;
+			var characters = 0, lineCount = 0, finalLineCharacterCount = 0, finalLineCharacterHeight = 0, currentLine = 0;
+			var characterX, characterY, characterPosition = 0;
+			var options = videoElement._captionatorOptions || {};
+			var videoMetrics;
 			
 			// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 			// (sadly, all the good ones!)
 			var spanify = function(DOMNode) {
 				var stringHasLength = function(textString) { return !!textString.length; };
 				var spanCode = "<span class='captionator-cue-character'>";
-				var nodeIndex, currentNode, currentNodeValue, replacementFragment;
+				var nodeIndex, currentNode, currentNodeValue, replacementFragment, characterCount = 0;
 				for (nodeIndex in DOMNode.childNodes) {
 					if (DOMNode.childNodes.hasOwnProperty(nodeIndex)) {
 						currentNode = DOMNode.childNodes[nodeIndex];
@@ -1231,17 +1234,30 @@
 										.filter(stringHasLength)
 										.join("</span>" + spanCode) +
 									"</span>";
-							console.dir(replacementFragment);
+							
+							[].slice.call(replacementFragment.querySelectorAll("span.captionator-cue-character"),0).forEach(function(span) {
+								characterCount ++;
+								captionator.applyStyles(span,{
+									"display":		"block",
+									"lineHeight":	"auto",
+									"height":		basePixelFontSize + "px",
+									"width":		verticalPixelLineHeight + "px",
+									"textAlign":	"center"
+								});
+							});
+							
 							currentNode.parentNode.replaceChild(replacementFragment,currentNode);
 						} else if (DOMNode.childNodes[nodeIndex].nodeType === 1) {
-							spanify(DOMNode.childNodes[nodeIndex]);
+							characterCount += spanify(DOMNode.childNodes[nodeIndex]);
 						}
 					}
 				}
+				
+				return characterCount;
 			};
 			
 			// Set up the cue canvas
-			var videoMetrics = captionator.getNodeMetrics(videoElement);
+			videoMetrics = captionator.getNodeMetrics(videoElement);
 			
 			// Define storage for the available cue area, diminished as further cues are added
 			// Cues occupy the largest possible area they can, either by width or height
@@ -1264,10 +1280,11 @@
 			// Calculate font metrics
 			baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
 			baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
+			basePixelFontSize = Math.floor((baseFontSize/72)*96);
 			baseLineHeight = Math.floor(baseFontSize * lineHeightRatio);
 			baseLineHeight = baseLineHeight > minimumLineHeight ? baseLineHeight : minimumLineHeight;
 			pixelLineHeight = Math.ceil((baseLineHeight/72)*96);
-			verticalPixelLineHeight = pixelLineHeight;
+			verticalPixelLineHeight	= pixelLineHeight;
 			
 			if (pixelLineHeight * Math.floor(videoMetrics.height / pixelLineHeight) < videoMetrics.height) {
 				pixelLineHeight = Math.floor(videoMetrics.height / Math.floor(videoMetrics.height / pixelLineHeight));
@@ -1282,7 +1299,7 @@
 			videoHeightInLines = Math.floor(videoElement._captionator_availableCueArea.height / pixelLineHeight);
 			videoWidthInLines = Math.floor(videoElement._captionator_availableCueArea.width / verticalPixelLineHeight);
 			
-			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""),10);
+			// Calculate cue size and padding
 			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""),10);
 			cueSize = cueSize <= 100 ? cueSize : 100;
 			cuePaddingLR = cueObject.direction === "horizontal" ? Math.floor(videoMetrics.width * 0.01) : 0;
@@ -1310,44 +1327,91 @@
 				if (cueObject.snapToLines === true) {
 					cueY = ((videoHeightInLines-1) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
 				} else {
-					cueY = ((videoElement._captionator_availableCueArea.bottom * (cueObject.linePosition/100)) +
-							videoElement._captionator_availableCueArea.top) - (pixelLineHeight + (cuePadding*2));
+					var tmpHeightExclusions = videoMetrics.controlHeight + pixelLineHeight + (cuePaddingTB*2);
+					cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
 				}
 				
 			} else {
-				// cueWidth = pixelLineHeight;
-				// cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100);
-				// 
-				// if (cueObject.textPosition === "auto") {
-				// 	cueY = (videoElement._captionator_availableCueArea.bottom - cueHeight) / 2;
-				// } else {
-				// 	cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
-				// 	cueX = (videoElement._captionator_availableCueArea.right - cueWidth) * (cueObject.textPosition/100);
-				// }
-				// 
-				// if (cueObject.snapToLines === true) {
-				// 	if (cueObject.direction == "vertical-lr") {
-				// 		cueY = ((videoHeightInLines-2) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
-				// 	} else {
-				// 		cueY = (videoElement._captionator_availableCueArea.top + videoElement._captionator_availableCueArea.bottom) -
-				// 				((videoHeightInLines-1) * pixelLineHeight);
-				// 	}
-				// } else {
-				// 	if (cueObject.direction == "vertical-lr") {
-				// 		
-				// 	} else {
-				// 		
-				// 	}
-				// }
+				// Basic positioning
+				cueY = videoElement._captionator_availableCueArea.top;
+				cueX = videoElement._captionator_availableCueArea.right - verticalPixelLineHeight;
+				cueWidth = verticalPixelLineHeight;
+				cueHeight = videoElement._captionator_availableCueArea.height * (cueSize/100);
+				
+				// Split into characters, and continue calculating width & positioning with new info
+				characterCount = spanify(DOMNode);
+				characters = [].slice.call(DOMNode.querySelectorAll("span.captionator-cue-character"),0);
+				charactersPerLine = Math.floor((cueHeight-cuePaddingTB*2)/basePixelFontSize);
+				cueWidth = Math.ceil(characterCount/charactersPerLine) * verticalPixelLineHeight;
+				lineCount = Math.ceil(characterCount/charactersPerLine);
+				finalLineCharacterCount = characterCount - (charactersPerLine * (lineCount - 1));
+				finalLineCharacterHeight = finalLineCharacterCount * basePixelFontSize;
+				
+				// Work out CueX taking into account linePosition...
+				if (cueObject.snapToLines === true) {
+					cueX = cueObject.direction === "vertical-lr" ? videoElement._captionator_availableCueArea.left : videoElement._captionator_availableCueArea.right - cueWidth;
+				} else {
+					var temporaryWidthExclusions = cueWidth + (cuePaddingLR * 2);
+					if (cueObject.direction === "vertical-lr") {
+						cueX = (videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100);
+					} else {
+						cueX = videoMetrics.width - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100));
+					}
+				}
+				
+				// Work out CueY taking into account textPosition...
+				if (cueObject.textPosition === "auto") {
+					cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) / 2) + videoElement._captionator_availableCueArea.top;
+				} else {
+					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
+					cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.textPosition/100)) + 
+							videoElement._captionator_availableCueArea.top;
+				}
+				
+				
+				// Iterate through the characters and position them accordingly...
+				currentLine = 0;
+				characterPosition = 0;
+				characterX = 0;
+				characterY = 0;
+				
+				characters.forEach(function(characterSpan,characterCount) {
+					if (cueObject.direction === "vertical-lr") {
+						characterX = verticalPixelLineHeight * currentLine;
+					} else {
+						characterX = cueWidth - (verticalPixelLineHeight * (currentLine+1));
+					}
+					
+					if (cueObject.alignment === "start" || (cueObject.alignment === "middle" && currentLine < lineCount-1)) {
+						characterY = (characterPosition * basePixelFontSize) + cuePaddingTB;
+					} else if (cueObject.alignment === "end") {
+						characterY = (cueHeight - cuePaddingTB) - (characterPosition * basePixelFontSize);
+					} else if (cueObject.alignment === "middle") {
+						characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
+					}
+					
+					captionator.applyStyles(characterSpan,{
+						"position": "absolute",
+						"top": characterY + "px",
+						"left": characterX + "px"
+					});
+					
+					if (characterPosition >= charactersPerLine-1) {
+						characterPosition = 0;
+						currentLine ++;
+					} else {
+						characterPosition ++;
+					}
+				});
 			}
 			
-			if (captionator.checkDirection(String(cueObject.text)) === "rtl") {
-				cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment];
-			} else {	
-				cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
+			if (cueObject.direction === "horizontal") {
+				if (captionator.checkDirection(String(cueObject.text)) === "rtl") {
+					cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment];
+				} else {	
+					cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
+				}
 			}
-			
-			// cueBackgroundColour = [Math.floor(Math.random()*200),Math.floor(Math.random()*200),Math.floor(Math.random()*200),0.5];
 			
 			captionator.applyStyles(DOMNode,{
 				"position": "absolute",
@@ -1365,15 +1429,22 @@
 			});
 			
 			if (cueObject.direction === "vertical" || cueObject.direction === "vertical-lr") {
-				// Split text into character span chunks
-				spanify(DOMNode);
+				// Work out how to shrink the available render area
+				// If subtracting from the right works out to a larger area, subtract from the right.
+				// Otherwise, subtract from the left.
+				if (((cueX - videoElement._captionator_availableCueArea.left) - videoElement._captionator_availableCueArea.left) >=
+					(videoElement._captionator_availableCueArea.right - (cueX + cueWidth))) {
+					
+					videoElement._captionator_availableCueArea.right = cueX;
+				} else {
+					videoElement._captionator_availableCueArea.left = cueX + cueWidth;
+				}
 				
-				// split text into lines
-				// wrap lines with a span
-				// find sequences of latin characters
-				// wrap the group with a span
-				
-				
+				videoElement._captionator_availableCueArea.width =
+					videoElement._captionator_availableCueArea.right - 
+					videoElement._captionator_availableCueArea.left;
+					
+				console.log(videoElement._captionator_availableCueArea);
 			} else {
 				// Now shift cue up if required to ensure it's all visible
 				if (DOMNode.scrollHeight > DOMNode.offsetHeight * 1.2) {
@@ -1538,8 +1609,8 @@
 				throw new Error("Cannot style a cue canvas for a non-video node!");
 			}
 		
-			if (videoElement.containerObject) {
-				containerObject = videoElement.containerObject;
+			if (videoElement._containerObject) {
+				containerObject = videoElement._containerObject;
 				containerID = containerObject.id;
 			}
 
@@ -1550,7 +1621,7 @@
 				containerID = captionator.generateID();
 				containerObject.id = containerID;
 				document.body.appendChild(containerObject);
-				videoElement.containerObject = containerObject;
+				videoElement._containerObject = containerObject;
 				// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
 				containerObject.setAttribute("aria-live","polite");
 				containerObject.setAttribute("aria-atomic","true");
@@ -1583,7 +1654,6 @@
 				"top": videoMetrics.top + "px",
 				"left": videoMetrics.left + "px",
 				"color": "white",
-				"textShadow": "black 0px 0px 5px",
 				"fontFamily": "Verdana, Helvetica, Arial, sans-serif",
 				"fontSize": baseFontSize + "pt",
 				"lineHeight": baseLineHeight + "pt",
@@ -1615,7 +1685,7 @@
 			options = options instanceof Object ? options : {};
 			var fileType = "", subtitles = [];
 		
-			// Set up timestamp parsers
+			// Set up timestamp parsers - SRT does WebVTT timestamps as well.
 			var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 			var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
 			var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
@@ -1755,24 +1825,25 @@
 				
 					for (subtitlePartIndex = 0; subtitlePartIndex < subtitleParts.length; subtitlePartIndex ++) {
 						var timestamp = subtitleParts[subtitlePartIndex];
+						
 						if ((timestampMatch = SRTTimestampParser.exec(timestamp)) ||
 							(timestampMatch = SUBTimestampParser.exec(timestamp)) ||
 							(timestampMatch = SBVTimestampParser.exec(timestamp))) {
-						
+							
 							// WebVTT / SRT / SUB (VOBSub) / YouTube SBV style timestamp
-						
+							
 							timeData = timestampMatch.slice(1);
-						
+							
 							timeIn =	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
 										parseInt((timeData[1]||0) * 60,10) +		// Minutes
 										parseInt((timeData[2]||0),10) +				// Seconds
 										parseFloat("0." + (timeData[3]||0),10);		// MS
-						
+							
 							timeOut =	parseInt((timeData[4]||0) * 60 * 60,10) +	// Hours
 										parseInt((timeData[5]||0) * 60,10) +		// Minutes
 										parseInt((timeData[6]||0),10) +				// Seconds
 										parseFloat("0." + (timeData[7]||0),10);		// MS
-						
+							
 							if (timeData[8]) {
 								cueSettings = timeData[8];
 							}
@@ -1826,7 +1897,7 @@
 									}
 								})
 								.map(parseCaptionChunk);
-			
+				
 				return subtitles;
 			} else {
 				throw new Error("Required parameter captionData not supplied.");

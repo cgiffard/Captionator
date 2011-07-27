@@ -1,5 +1,7 @@
 # Video and Audio tracks (MediaTrack) #
 
+**NOTE: THIS IS SUBJECT TO CHANGE.**
+
 Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
 
 Some use cases for additional audio & video tracks might include:

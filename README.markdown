@@ -3,7 +3,7 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5. Just 5KB when gzipped!**
 
-**Implements WHATWG TimedTextTrack Specification! Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
+**Implements WHATWG TimedTextTrack Specification, and supports WebVTT, (as well as WebVTT v2 proposed features) SRT, SBV, SUB... LRC and TTML/DFXP coming soon! Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
 
 **This is the `CaptionCrunch` build - a bleeding edge development branch with all the fruit - but which might not always work. Be warned! More info further down the page.**
 
