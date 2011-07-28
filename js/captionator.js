@@ -1314,14 +1314,18 @@
 			
 			if (cueObject.direction === "horizontal") {
 				cueHeight = pixelLineHeight;
-				cueWidth = videoElement._captionator_availableCueArea.width * (cueSize/100);
+				
+				if (cueObject.snapToLines === true) {
+					cueWidth = videoElement._captionator_availableCueArea.width * (cueSize/100);
+				} else {
+					cueWidth = videoMetrics.width * (cueSize/100);
+				}
 				
 				if (cueObject.textPosition === "auto") {
 					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 				} else {
 					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
-					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (cueObject.textPosition/100)) + 
-							videoElement._captionator_availableCueArea.left;
+					cueX = ((videoMetrics.right - cueWidth) * (cueObject.textPosition/100)) + videoMetrics.left;
 				}
 				
 				if (cueObject.snapToLines === true) {
@@ -1355,7 +1359,7 @@
 					if (cueObject.direction === "vertical-lr") {
 						cueX = (videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100);
 					} else {
-						cueX = videoMetrics.width - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100));
+						cueX = (videoMetrics.width-temporaryWidthExclusions) - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100));
 					}
 				}
 				
@@ -1382,10 +1386,10 @@
 						characterX = cueWidth - (verticalPixelLineHeight * (currentLine+1));
 					}
 					
-					if (cueObject.alignment === "start" || (cueObject.alignment === "middle" && currentLine < lineCount-1)) {
+					if (cueObject.alignment === "start" || (cueObject.alignment !== "start" && currentLine < lineCount-1)) {
 						characterY = (characterPosition * basePixelFontSize) + cuePaddingTB;
 					} else if (cueObject.alignment === "end") {
-						characterY = (cueHeight - cuePaddingTB) - (characterPosition * basePixelFontSize);
+						characterY = ((characterPosition * basePixelFontSize)-basePixelFontSize) + ((cueHeight+(cuePaddingTB*2))-finalLineCharacterHeight);
 					} else if (cueObject.alignment === "middle") {
 						characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
 					}
@@ -1443,8 +1447,7 @@
 				videoElement._captionator_availableCueArea.width =
 					videoElement._captionator_availableCueArea.right - 
 					videoElement._captionator_availableCueArea.left;
-					
-				console.log(videoElement._captionator_availableCueArea);
+				
 			} else {
 				// Now shift cue up if required to ensure it's all visible
 				if (DOMNode.scrollHeight > DOMNode.offsetHeight * 1.2) {
@@ -1459,7 +1462,7 @@
 						cueY = cueY - (upwardAjustmentInLines*pixelLineHeight);
 						DOMNode.style.top = cueY + "px";
 					} else {
-						// BUGGY
+						// BUGGY ...?
 						var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
 						cueHeight = (DOMNode.scrollHeight + (videoMetrics.height*0.01));
 						cueY -= upwardAjustment;
