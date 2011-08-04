@@ -1,5 +1,5 @@
 /* 
-	Captionator 0.5a [CaptionCrunch]
+	Captionator 0.5b [CaptionCrunch]
 	Christopher Giffard, 2011
 	Share and enjoy
 
@@ -12,12 +12,12 @@
 (function() {
 	"use strict";
 	
-	// Variables you might want to tweak
-	var minimumFontSize = 10;				// We don't want the type getting any smaller than this.
-	var minimumLineHeight = 16;				// As above, in points
-	var fontSizeVerticalPercentage = 4.5;	// Caption font size is 4.5% of the video height
-	var lineHeightRatio = 1.5;				// Caption line height is 1.3 times the font size
-	var cueBackgroundColour	= [0,0,0,0.5];	// R,G,B,A
+	//	Variables you might want to tweak
+	var minimumFontSize = 10;				//	We don't want the type getting any smaller than this.
+	var minimumLineHeight = 16;				//	As above, in points
+	var fontSizeVerticalPercentage = 4.5;	//	Caption font size is 4.5% of the video height
+	var lineHeightRatio = 1.5;				//	Caption line height is 1.3 times the font size
+	var cueBackgroundColour	= [0,0,0,0.5];	//	R,G,B,A
 	
 	var captionator = {
 		/*
@@ -26,10 +26,10 @@
 		*/
 		"createDOMException": function(code,message,name) {
 			try {
-				// Deliberately cause a DOMException error
+				//	Deliberately cause a DOMException error
 				document.querySelectorAll("div/[]");
 			} catch(Error) {
-				// Catch it and subclass it
+				//	Catch it and subclass it
 				/**
 				 * @constructor
 				 */
@@ -37,6 +37,37 @@
 				CustomDOMException.prototype = Error;
 				return new CustomDOMException(code,message,name);
 			}
+		},
+		/*
+			captionator.compareArray(array1, array2)
+		
+			Rough and ready array comparison function we can use to easily determine
+			whether cues have changed or not.
+		
+			First parameter: The first aray to compare
+
+			Second parameter: The second array to compare
+		
+			RETURNS:
+		
+			True if the arrays are the same length and all elements in each array are the strictly equal (index for index.)
+			False in all other circumstances.
+			Returns false if either parameter is not an instance of Array().
+		
+		*/
+		"compareArray": function compareArray(array1,array2) {
+			//	If either of these arguments aren't arrays, we consider them unequal
+			if (!(array1 instanceof Array) || !(array2 instanceof Array)) { return false; }
+			//	If the lengths are different, we consider then unequal
+			if (array1.length !== array2.length) { return false; }
+			//	Loop through, break at first value inequality
+			for (var index in array1) {
+				if (array1.hasOwnProperty(index)) {
+					if (array1[index] !== array2[index]) { return false; }
+				}
+			}
+			//	If we haven't broken, they're the same!
+			return true;
 		},
 		/*
 			captionator.generateID([number ID length])
@@ -114,7 +145,7 @@
 				this.id = id || "";
 				this.internalMode = captionator.TextTrack.OFF;
 				this.cues = new captionator.TextTrackCueList(this);
-				this.activeCues = new captionator.ActiveTextTrackCueList(this.cues);
+				this.activeCues = new captionator.ActiveTextTrackCueList(this.cues,this);
 				this.kind = kind || "subtitles";
 				this.label = label || "";
 				this.language = language || "";
@@ -284,7 +315,7 @@
 			/**
 			 * @constructor
 			 */
-			captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList) {
+			captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList,textTrack) {
 				// Among active cues:
 			
 				// The text track cues of a media element's text tracks are ordered relative to each
@@ -296,14 +327,30 @@
 				// any cues with identical end times must be sorted in the order they were created (so
 				// e.g. for cues from a WebVTT file, that would be the order in which the cues were
 				// listed in the file).
+
 				this.refreshCues = function() {
-					var cueList = this;
-					this.length = 0;
-					textTrackCueList.forEach(function(cue) {
-						if (cue.active) {
-							cueList.push(cue);
+					if (textTrackCueList.length) {
+						var cueList = this;
+						var cueListChanged = false;
+						var oldCueList = [].slice.call(this,0);
+						this.length = 0;
+						
+						textTrackCueList.forEach(function(cue) {
+							if (cue.active) {
+								cueList.push(cue);
+
+								if (cueList[cueList.length-1] !== oldCueList[cueList.length-1]) {
+									cueListChanged = true;
+								}
+							}
+						});
+
+						if (cueListChanged) {
+							try {
+								textTrack.oncuechange();
+							} catch(error){}
 						}
-					});
+					}
 				};
 			
 				this.toString = function() {
@@ -327,6 +374,7 @@
 				this.settings = typeof(settings) === "string" ? settings : "";
 				this.intSettings = {};
 				this.pauseOnExit = !!pauseOnExit;
+				this.wasActive = false;
 			
 				// Parse settings & set up cue defaults
 			
@@ -415,6 +463,12 @@
 							try {
 								currentTime = this.track.videoNode.currentTime;
 								if (this.startTime <= currentTime && this.endTime >= currentTime) {
+									// Fire enter event if we were not active and now are
+									if (!this.wasActive) {
+										this.wasActive = true;
+										this.onenter();
+									}
+
 									return true;
 								}
 							} catch(Error) {
@@ -422,7 +476,13 @@
 							}
 						}
 					}
-				
+					
+					// Fire exit event if we were active and now are not
+					if (this.wasActive) {
+						this.wasActive = false;
+						this.onexit();
+					}
+
 					return false;
 				};
 			
@@ -433,41 +493,45 @@
 						{get: this.isActive}
 					);
 				}
-			
+				
+				this.toString = function toString() {
+					return "TextTrackCue:" + this.id + "\n" + String(this.text);
+				};
+				
 				// Events defined by spec
 				this.onenter = function() {};
 				this.onexit = function() {};
 			};
 		
-			// Captionator media extensions
+			//	Captionator media extensions
 			/**
 			 * @constructor
 			 */
 			captionator.MediaTrack = function MediaTrack(id,kind,label,language,src,type,isDefault) {
 				// This function is under construction!
 				// Eventually, the idea is that captionator will support timed video and audio tracks in addition to text subtitles
-			
+				
 				var getSupportedMediaSource = function(sources) {
-					// Thanks Mr Pilgrim! :)
+					//	Thanks Mr Pilgrim! :)
 					var supportedSource = sources
 						.filter(function(source,index) {
 							try {
 								var mediaElement = document.createElement(source.getAttribute("type").split("/").shift());
 								return !!(mediaElement.canPlayType && mediaElement.canPlayType(source.getAttribute("type")).replace(/no/, ''));
 							} catch(Error) {
-								// (The type fragment before the / probably didn't match to 'video' or 'audio'. So... we don't support it.)
+								//	(The type fragment before the / probably didn't match to 'video' or 'audio'. So... we don't support it.)
 								return false;
 							}
 						})
 						.shift()
 						.getAttribute("src");
-				
+			
 					return supportedSource;
 				};
-			
+		
 				this.onload = function () {};
 				this.onerror = function() {};
-			
+		
 				this.id = id || "";
 				this.internalMode = captionator.TextTrack.OFF;
 				this.internalMode = captionator.TextTrack.OFF;
@@ -476,27 +540,27 @@
 				this.label = label || "";
 				this.language = language || "";
 				this.readyState = captionator.TextTrack.NONE;
-				this.type = type || "x/unknown"; // MIME type
+				this.type = type || "x/unknown"; //	MIME type
 				this.mediaType = null;
 				this.src = "";
-			
+		
 				if (typeof(src) === "string") {
 					this.src = src;
 				} else if (src instanceof NodeList) {
 					this.src = getSupportedMediaSource(src);
 				}
-			
+		
 				if (this.type.match(/^video\//)) {
 					this.mediaType = "video";
 				} else if (this.type.match(/^audio\//)) {
 					this.mediaType = "audio";
 				}
-			
-				// Create getters and setters for mode
+		
+				//	Create getters and setters for mode
 				this.getMode = function() {
 					return this.internalMode;
 				};
-			
+		
 				this.setMode = function(value) {
 					var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
 					if (allowedModes.indexOf(value) !== -1) {
@@ -505,11 +569,11 @@
 							if (value === captionator.TextTrack.HIDDEN && !this.mediaElement) {
 								this.buildMediaElement();
 							}
-						
+					
 							if (value === captionator.TextTrack.SHOWING) {
 								this.showMediaElement();
 							}
-						
+					
 							if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
 								this.hideMediaElement();
 							}
@@ -518,7 +582,7 @@
 						throw new Error("Illegal mode value for track.");
 					}
 				};
-			
+		
 				if (Object.prototype.__defineGetter__) {
 					this.__defineGetter__("mode", this.getMode);
 					this.__defineSetter__("mode", this.setMode);
@@ -527,19 +591,19 @@
 						{get: this.getMode, set: this.setMode}
 					);
 				}
-			
+		
 				this.hideMediaElement = function() {
 					if (this.mediaElement) {
 						if (!this.mediaElement.paused) {
 							this.mediaElement.pause();
 						}
-					
+				
 						if (this.mediaElement instanceof HTMLVideoElement) {
 							this.mediaElement.style.display = "none";
 						}
 					}
 				};
-			
+		
 				this.showMediaElement = function() {
 					if (!this.mediaElement) {
 						this.buildMediaElement();
@@ -548,52 +612,52 @@
 						if (!this.mediaElement.parentNode) {
 							document.body.appendChild(this.mediaElement);
 						}
-					
+				
 						if (this.mediaElement instanceof HTMLVideoElement) {
 							this.mediaElement.style.display = "block";
 						}
 					}
 				};
-			
+		
 				this.buildMediaElement = function() {
 					try {
 						if (this.type.match(/^video\//)) {
 							this.mediaElement = document.createElement("video");
 							this.mediaElement.className = "captionator-mediaElement-" + this.kind;
 							captionator.styleNode(this.mediaElement,this.kind,this.videoNode);
-						
+					
 						} else if (this.type.match(/^audio\//)) {
 							this.mediaElement = new Audio();
 						}
-					
+				
 						this.mediaElement.type = this.type;
 						this.mediaElement.src = this.src;
 						this.mediaElement.load();
 						this.mediaElement.trackObject = this;
 						this.readyState = captionator.TextTrack.LOADING;
 						var mediaElement = this.mediaElement;
-					
+				
 						this.mediaElement.addEventListener("progress",function(eventData) {
 							mediaElement.trackObject.readyState = captionator.TextTrack.LOADING;
 						},false);
-					
+				
 						this.mediaElement.addEventListener("canplaythrough",function(eventData) {
 							mediaElement.trackObject.readyState = captionator.TextTrack.LOADED;
 							mediaElement.trackObject.onload.call(mediaElement.trackObject);
 						},false);
-					
+				
 						this.mediaElement.addEventListener("error",function(eventData) {
 							mediaElement.trackObject.readyState = captionator.TextTrack.ERROR;
 							mediaElement.trackObject.mode = captionator.TextTrack.OFF;
 							mediaElement.trackObject.mediaElement = null;
 							mediaElement.trackObject.onerror.call(mediaElement.trackObject,eventData);
 						},false);
-					
+				
 					} catch(Error) {
 						this.readyState = captionator.TextTrack.ERROR;
 						this.mode = captionator.TextTrack.OFF;
 						this.mediaElement = null;
-						this.onerror.call(this,Error);
+						this.onerror.apply(this,Error);
 					}
 				};
 			};
@@ -702,7 +766,7 @@
 					if (textKinds.filter(function (currentKind){
 							return kind === currentKind ? true : false;
 						}).length) {
-						newTrack = new captionator.TextTrack(id,kind,label,language,src);
+						newTrack = new captionator.TextTrack(id,kind,label,language,src,null);
 						if (newTrack) {
 							if (!(videoElement.tracks instanceof Array)) {
 								videoElement.tracks = [];
@@ -843,7 +907,7 @@
 					// appropriate for the user, and there is no other text track in the media element's list of text tracks with a text track
 					// kind of chapters whose text track mode is showing
 					// ---> Let the text track mode be showing.
-				
+					
 					if (trackObject.kind === "chapters" && (defaultLanguage === trackObject.language)) {
 						if (!trackList.filter(function(trackObject) {
 								if (trackObject.kind === "chapters" && trackObject.mode === captionator.TextTrack.SHOWING) {
@@ -913,7 +977,7 @@
 					// update active cues
 					try {
 						videoElement.tracks.forEach(function(track) {
-							track.activeCues.refreshCues();
+							track.activeCues.refreshCues.apply(track.activeCues);
 						});
 					} catch(error) {}
 				
@@ -958,22 +1022,7 @@
 			var cuesChanged = false;
 			var activeCueIDs = [];
 			var cueSortArray = [];
-		
-			// Rough and ready array comparison function we can use to easily determine
-			// whether cues have changed or not
-			var compareArray = function(array1,array2) {
-				// If either of these arguments aren't arrays, we consider them unequal
-				if (!(array1 instanceof Array) || !(array2 instanceof Array)) { return false; }
-				// If the lengths are different, we consider then unequal
-				if (array1.length !== array2.length) { return false; }
-				// Loop through, break at first value inequality
-				for (var index in array1) {
-					if (array1[index] !== array2[index]) { return false; }
-				}
-				// If we haven't broken, they're the same!
-				return true;
-			};
-		
+
 			// Work out what cues are showing...
 			trackList.forEach(function(track,trackIndex) {
 				if (track.mode === captionator.TextTrack.SHOWING && track.readyState === captionator.TextTrack.LOADED) {
@@ -999,7 +1048,7 @@
 		
 			// Determine whether cues have changed - we generate an ID based on track ID, cue ID, and text length
 			activeCueIDs = compositeActiveCues.map(function(cue) {return cue.track.id + "." + cue.id + ":" + cue.text.toString(currentTime).length;});
-			cuesChanged = !compareArray(activeCueIDs,videoElement._captionator_previousActiveCues);
+			cuesChanged = !captionator.compareArray(activeCueIDs,videoElement._captionator_previousActiveCues);
 		
 			// If they've changed, we re-render our cue canvas.
 			if (cuesChanged) {
@@ -1218,6 +1267,17 @@
 				var stringHasLength = function(textString) { return !!textString.length; };
 				var spanCode = "<span class='captionator-cue-character'>";
 				var nodeIndex, currentNode, currentNodeValue, replacementFragment, characterCount = 0;
+				var styleSpan = function(span) {
+					characterCount ++;
+					captionator.applyStyles(span,{
+						"display":		"block",
+						"lineHeight":	"auto",
+						"height":		basePixelFontSize + "px",
+						"width":		verticalPixelLineHeight + "px",
+						"textAlign":	"center"
+					});
+				};
+
 				for (nodeIndex in DOMNode.childNodes) {
 					if (DOMNode.childNodes.hasOwnProperty(nodeIndex)) {
 						currentNode = DOMNode.childNodes[nodeIndex];
@@ -1235,16 +1295,7 @@
 										.join("</span>" + spanCode) +
 									"</span>";
 							
-							[].slice.call(replacementFragment.querySelectorAll("span.captionator-cue-character"),0).forEach(function(span) {
-								characterCount ++;
-								captionator.applyStyles(span,{
-									"display":		"block",
-									"lineHeight":	"auto",
-									"height":		basePixelFontSize + "px",
-									"width":		verticalPixelLineHeight + "px",
-									"textAlign":	"center"
-								});
-							});
+							[].slice.call(replacementFragment.querySelectorAll("span.captionator-cue-character"),0).forEach(styleSpan);
 							
 							currentNode.parentNode.replaceChild(replacementFragment,currentNode);
 						} else if (DOMNode.childNodes[nodeIndex].nodeType === 1) {
@@ -1300,7 +1351,7 @@
 			videoWidthInLines = Math.floor(videoElement._captionator_availableCueArea.width / verticalPixelLineHeight);
 			
 			// Calculate cue size and padding
-			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""),10);
+			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""));
 			cueSize = cueSize <= 100 ? cueSize : 100;
 			cuePaddingLR = cueObject.direction === "horizontal" ? Math.floor(videoMetrics.width * 0.01) : 0;
 			cuePaddingTB = cueObject.direction === "horizontal" ? 0 : Math.floor(videoMetrics.height * 0.01);
@@ -1309,7 +1360,7 @@
 				cueObject.linePosition = cueObject.direction === "horizontal" ? videoHeightInLines : videoWidthInLines;
 			} else if (String(cueObject.linePosition).match(/\%/)) {
 				cueObject.snapToLines = false;
-				cueObject.linePosition = parseFloat(String(cueObject.linePosition).replace(/\%/ig,""),10);
+				cueObject.linePosition = parseFloat(String(cueObject.linePosition).replace(/\%/ig,""));
 			}
 			
 			if (cueObject.direction === "horizontal") {
@@ -1324,7 +1375,7 @@
 				if (cueObject.textPosition === "auto") {
 					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 				} else {
-					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
+					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
 					cueX = ((videoMetrics.right - cueWidth) * (cueObject.textPosition/100)) + videoMetrics.left;
 				}
 				
@@ -1367,7 +1418,7 @@
 				if (cueObject.textPosition === "auto") {
 					cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) / 2) + videoElement._captionator_availableCueArea.top;
 				} else {
-					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""),10);
+					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
 					cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.textPosition/100)) + 
 							videoElement._captionator_availableCueArea.top;
 				}
@@ -1774,7 +1825,7 @@
 											tmpObject.timeIn =	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
 																parseInt((timeData[1]||0) * 60,10) +		// Minutes
 																parseInt((timeData[2]||0),10) +				// Seconds
-																parseFloat("0." + (timeData[3]||0),10);		// MS
+																parseFloat("0." + (timeData[3]||0));		// MS
 										}
 									
 										currentContext.push(tmpObject);
@@ -1840,12 +1891,12 @@
 							timeIn =	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
 										parseInt((timeData[1]||0) * 60,10) +		// Minutes
 										parseInt((timeData[2]||0),10) +				// Seconds
-										parseFloat("0." + (timeData[3]||0),10);		// MS
+										parseFloat("0." + (timeData[3]||0));		// MS
 							
 							timeOut =	parseInt((timeData[4]||0) * 60 * 60,10) +	// Hours
 										parseInt((timeData[5]||0) * 60,10) +		// Minutes
 										parseInt((timeData[6]||0),10) +				// Seconds
-										parseFloat("0." + (timeData[7]||0),10);		// MS
+										parseFloat("0." + (timeData[7]||0));		// MS
 							
 							if (timeData[8]) {
 								cueSettings = timeData[8];
@@ -1856,8 +1907,8 @@
 							// Google's proposed WebVTT timestamp style
 							timeData = timestampMatch.slice(1);
 						
-							timeIn = parseFloat(timeData[0],10);
-							timeOut = timeIn + parseFloat(timeData[1],10);
+							timeIn = parseFloat(timeData[0]);
+							timeOut = timeIn + parseFloat(timeData[1]);
 
 							if (timeData[2]) {
 								cueSettings = timeData[2];
