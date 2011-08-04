@@ -1738,14 +1738,18 @@
 			// Be liberal in what you accept from others...
 			options = options instanceof Object ? options : {};
 			var fileType = "", subtitles = [];
+			var cueStyles;
 		
 			// Set up timestamp parsers - SRT does WebVTT timestamps as well.
-			var SUBTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-			var SBVTimestampParser		= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-			var SRTTimestampParser		= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
-			var SRTChunkTimestampParser	= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
-			var GoogleTimestampParser	= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-			var LRCTimestampParser		= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
+			var SUBTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
+			var SBVTimestampParser			= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
+			var SRTTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
+			var SRTChunkTimestampParser		= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
+			var GoogleTimestampParser		= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
+			var LRCTimestampParser			= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
+			var WebVTTDEFAULTSCueParser		= /^DEFAULT(S)?\s+\-\-\>\s+(.*)/;
+			var WebVTTSTYLECueParser		= /^STYLE(S)?\s+\-\-\>\s+(.*)/;
+			var WebVTTCOMMENTCueParser		= /^COMMENT(S)?\s+\-\-\>\s+(.*)/;
 
 			if (captionData) {
 				// This function parses and validates cue HTML/VTT tokens, and converts them into something understandable to the renderer.
@@ -1852,8 +1856,18 @@
 				
 				// This function takes chunks of text representing cues, and converts them into cue objects.
 				var parseCaptionChunk = function parseCaptionChunk(subtitleElement,objectCount) {
-					var subtitleParts, timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id;
-					var timestampMatch;
+					var subtitleParts, timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id, specialCueData;
+					var timestampMatch, tmpCue;
+
+					// WebVTT Special Cue Logic
+					if ((specialCueData = WebVTTDEFAULTSCueParser.exec(subtitleElement)) || 
+						(specialCueData = WebVTTSTYLECueParser.exec(subtitleElement)) ||
+						(specialCueData = WebVTTCOMMENTCueParser.exec(subtitleElement))) {
+						
+						// Code to proces these special cues will goe here soon
+
+						return null;
+					}
 				
 					if (fileType === "LRC") {
 						subtitleParts = [
@@ -1920,10 +1934,17 @@
 						subtitleParts = subtitleParts.slice(0,subtitlePartIndex).concat(subtitleParts.slice(subtitlePartIndex+1));
 						break;
 					}
+
+					if (!timeIn && !timeOut) {
+						// We didn't extract any time information. Assume the cue is invalid!
+						return null;
+					}
 				
 					// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
 					html = options.processCueHTML === false ? subtitleParts.join("\n") : processCaptionHTML(subtitleParts.join("\n"));
-					return new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
+					tmpCue = new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
+					tmpCue.styleData = cueStyles;
+					return tmpCue;
 				};
 			
 				// Begin parsing --------------------
@@ -1950,7 +1971,16 @@
 										return false;
 									}
 								})
-								.map(parseCaptionChunk);
+								.map(parseCaptionChunk)
+								.filter(function(cue) {
+									// In the parseCaptionChunk function, we return null for special and malformed cues,
+									// and cues we want to ignore, rather than expose to JS. Filter these out now.
+									if (cue !== null) {
+										return true;
+									}
+
+									return false;
+								});
 				
 				return subtitles;
 			} else {
