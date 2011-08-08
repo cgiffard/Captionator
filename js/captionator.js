@@ -177,6 +177,8 @@
 								// actually hide the captions
 								if (this.videoNode.containerObject) {
 									try {
+										// With the new WebVTT renderer, this is not good behaviour, and it's a wonder it still works.
+										// I'll be looking to fix this ASAP.
 										this.videoNode.containerObject.parentNode.removeChild(this.videoNode.containerObject);
 									} catch(Error) {}
 								}
@@ -236,9 +238,9 @@
 									
 									captionData = captionator.parseCaptions(ajaxObject.responseText,TrackProcessingOptions);
 									currentTrackElement.readyState = captionator.TextTrack.LOADED;
-									captionator.rebuildCaptions(currentTrackElement.videoNode);
 									currentTrackElement.cues.loadCues(captionData);
-									currentTrackElement.onload();
+									captionator.rebuildCaptions(currentTrackElement.videoNode);
+									currentTrackElement.onload.call(this);
 								
 									if (callback instanceof Function) {
 										callback.call(currentTrackElement,captionData);
@@ -264,8 +266,12 @@
 				// Adds the given cue to mutableTextTrack's text track list of cues.
 				// Raises an exception if the argument is null, associated with another text track, or already in the list of cues.
 			
-				this.addCue = function() {
-				
+				this.addCue = function(cue) {
+					if (cue && cue instanceof captionator.TextTrackCue) {
+						this.cues.addCue(cue);
+					} else {
+						throw Error("The argument is null or not an instance of TextTrackCue.");
+					}
 				};
 			
 				// mutableTextTrack.removeCue(cue)
@@ -303,6 +309,20 @@
 					for (var cueIndex = 0; cueIndex < cueData.length; cueIndex ++) {
 						cueData[cueIndex].track = this.track;
 						Array.prototype.push.call(this,cueData[cueIndex]);
+					}
+				};
+
+				this.addCue = function(cue) {
+					if (cue && cue instanceof captionator.TextTrackCue) {
+						if (cue.track === this.track || !cue.track) {
+							// TODO: Check whether cue is already in list of cues.
+							// TODO: Sort cue list based on TextTrackCue.startTime.
+							Array.prototype.push.call(this,cue);
+						} else {
+							throw Error("This cue is associated with a different track!");
+						}
+					} else {
+						throw Error("The argument is null or not an instance of TextTrackCue.");
 					}
 				};
 			
@@ -657,7 +677,10 @@
 						this.readyState = captionator.TextTrack.ERROR;
 						this.mode = captionator.TextTrack.OFF;
 						this.mediaElement = null;
-						this.onerror.apply(this,Error);
+
+						if (this.onerror) {
+							this.onerror.apply(this,Error);
+						}
 					}
 				};
 			};

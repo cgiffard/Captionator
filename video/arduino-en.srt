@@ -1,7 +1,7 @@
 WEBVTT
 
 1
-00:00:13.000 --> 00:00:16.100 D:vertical L:90% T:50% S:140%
+00:00:13.000 --> 00:00:16.100
 I heard about this <c.arduino>arduino</c> project, and I saw it online - 
 
 2

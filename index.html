@@ -8,43 +8,23 @@
 	<body>
 		
 		<!-- IMPORTANT NOTE: This is a development build, and the code could be somewhat messy. Look at the stable branch for better use examples. -->
-		
 		<h1>HTML5 Video Closed Captioning Example</h1>
-		<p><em><strong>Note:</strong> the German and Japanese subtitles are machine translated.</em></p>
-		<!-- <video controls autobuffer autoplay loop id="videoTest" width="252" height="116"> -->
-		<video controls autobuffer autoplay loop id="videoTest" width="505" height="232">
-		<!-- <video controls autobuffer autoplay loop id="videoTest" width="1024" height="576"> -->
-		<!-- <video controls autobuffer autoplay loop id="videoTest" width="1010" height="464"> -->
-		<!-- <video controls autobuffer autoplay loop id="videoTest" width="1010" height="464" style="width:100%; height: auto !important;"> -->
-			<!-- <source src="video/qanda_2010_ep31.mp4" type="video/mp4" /> -->
+		<video controls autobuffer autoplay loop id="videoTest" width="1010" height="464">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
-			<track kind="captions" src="video/acid.webvtt" type="text/webvtt" srclang="en" label="WebVTT Acid Test" default />
+
+			<track kind="captions" src="video/acid.webvtt" type="text/webvtt" srclang="en" label="WebVTT Acid Test" />
 			<track kind="captions" src="video/example.webvtt" type="text/webvtt" srclang="en" label="WHATWG's WebVTT Example" />
-			<track kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" />
+			<track kind="captions" src="video/arduino-en.srt" type="text/srt" srclang="en" label="English Subtitles" default />
 			<track kind="captions" src="video/arduino-de.srt" type="text/srt" srclang="de" label="German Subtitles" />
 			<track kind="captions" src="video/arduino-ja.srt" type="text/srt" srclang="ja" label="Japanese Subtitles" />
-			<track kind="audiodescription" src="audio/arduino-en.mp3" type="audio/mp3" srclang="en" label="English Descriptive Audio" />
-			
-			<!-- I know this isn't sign language, but... just asking for a little willing suspension of disbelief! -->
-			<track kind="signlanguage" src="video/arduino.m4v" type="video/mp4" srclang="en" label="Sign Language (Just pretend!)" />
-			<!--
-				Due to parser architecture, browsers don't register the <source> tracks as children of the <track> element.
-				I *will* get this syntax working, (all the other architecture is in place for it) but for now it's disabled.
-				Don't use it now. (Unless you've got some good ideas for forcing the parser to recognise it! If so, let me know!)
-				
-				<track kind="signlanguage" srclang="ja" label="Sign Language, Japanese">
-					<source src="video/arduino.m4v" type="video/mp4" />
-					<source src="video/arduino.webm" type="video/webm" />
-					<source src="video/arduino.ogv" type="video/ogg" />
-				</track>
-			-->
 		</video>
+		<p><a href="index.html?debug">WebVTT renderer debug mode</a></p>
 		<h2>Media Controls</h2>
-		
-		
-		<script type="text/javascript" src="js/captionator-min.js"></script>
+
+		<!-- Include Captionator -->
+		<script type="text/javascript" src="js/captionator.js"></script>
 		
 		<!-- example usage -->
 		<script type="text/javascript" src="js/captionator-example-api.js"></script>
