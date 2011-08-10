@@ -119,6 +119,27 @@
 		"captionify": function(element,defaultLanguage,options) {
 			var videoElements = [], elementIndex = 0;
 			options = options instanceof Object? options : {};
+
+			// Override defaults if options are present...
+			if (options.minimumFontSize && typeof(options.minimumFontSize) === "number") {
+				minimumFontSize = options.minimumFontSize;
+			}
+
+			if (options.minimumLineHeight && typeof(options.minimumLineHeight) === "number") {
+				minimumLineHeight = options.minimumLineHeight;
+			}
+			
+			if (options.fontSizeVerticalPercentage && typeof(options.fontSizeVerticalPercentage) === "number") {
+				fontSizeVerticalPercentage = options.fontSizeVerticalPercentage;
+			}
+			
+			if (options.lineHeightRatio && typeof(options.lineHeightRatio) !== "number") {
+				lineHeightRatio = options.lineHeightRatio;
+			}
+
+			if (options.cueBackgroundColour && options.cueBackgroundColour instanceof Array) {
+				cueBackgroundColour = options.cueBackgroundColour;
+			}
 		
 			/* Feature detection block */
 			if (!HTMLVideoElement) {
@@ -468,7 +489,7 @@
 					var DOMFragment = document.createDocumentFragment();
 					var DOMNode = document.createElement("div");
 					DOMNode.innerHTML = String(this.text);
-				
+					
 					Array.prototype.forEach.call(DOMNode.childNodes,function(child) {
 						DOMFragment.appendChild(child.cloneNode(true));
 					});
@@ -697,7 +718,7 @@
 				this.processedCue = null;
 				this.toString = function toString(currentTimestamp) {
 					if (options.processCueHTML !== false) {
-						var processLayer = function(layerObject) {
+						var processLayer = function(layerObject,depth) {
 							if (cueStructureObject.processedCue === null) {
 								var compositeHTML = "", itemIndex, cueChunk;
 								for (itemIndex in layerObject) {
@@ -710,11 +731,11 @@
 												compositeHTML +="<q data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
 																"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "' " + 
 																"title=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\">" +
-																processLayer(cueChunk.children) +
+																processLayer(cueChunk.children,depth+1) +
 																"</q>";
 											} else if(cueChunk.token === "c") {
 												compositeHTML +="<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
-																processLayer(cueChunk.children) +
+																processLayer(cueChunk.children,depth+1) +
 																"</span>";
 											} else if(cueChunk.timeIn > 0) {
 												// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
@@ -723,12 +744,12 @@
 											
 													compositeHTML +="<span class='webvtt-timestamp-span' " +
 																	"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
-																	processLayer(cueChunk.children) +
+																	processLayer(cueChunk.children,depth+1) +
 																	"</span>";
 												}
 											} else {
 												compositeHTML +=cueChunk.rawToken +
-																processLayer(cueChunk.children) +
+																processLayer(cueChunk.children,depth+1) +
 																"</" + cueChunk.token + ">";
 											}
 										} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
@@ -739,7 +760,7 @@
 									}
 								}
 							
-								if (!cueStructureObject.isTimeDependent) {
+								if (!cueStructureObject.isTimeDependent && depth === 0) {
 									cueStructureObject.processedCue = compositeHTML;
 								}
 							
@@ -748,7 +769,7 @@
 								return cueStructureObject.processedCue;
 							}
 						};
-						return processLayer(this);
+						return processLayer(this,0);
 					} else {
 						return cueSource;
 					}
@@ -1202,6 +1223,11 @@
 					controlHeight = 44;
 				} else if (UA.indexOf("safari") !== -1) {
 					controlHeight = 25;
+				}
+			} else if (DOMNode._captionatorOptions) {
+				var tmpCaptionatorOptions = DOMNode._captionatorOptions;
+				if (tmpCaptionatorOptions.controlHeight) {
+					controlHeight = parseInt(tmpCaptionatorOptions.controlHeight,10);
 				}
 			}
 		
@@ -1681,11 +1707,12 @@
 			var baseFontSize, baseLineHeight;
 			var containerObject;
 			var containerID;
+			var options = videoElement._captionatorOptions instanceof Object ? videoElement._captionatorOptions : {};
 		
 			if (!(videoElement instanceof HTMLVideoElement)) {
 				throw new Error("Cannot style a cue canvas for a non-video node!");
 			}
-		
+			
 			if (videoElement._containerObject) {
 				containerObject = videoElement._containerObject;
 				containerID = containerObject.id;
@@ -1697,7 +1724,40 @@
 				containerObject.className = "captionator-cue-canvas";
 				containerID = captionator.generateID();
 				containerObject.id = containerID;
-				document.body.appendChild(containerObject);
+				
+				// We can choose to append the canvas to an element other than the body.
+				// If this option is specified, we no longer use the offsetTop/offsetLeft of the video
+				// to define the position, we just inherit it.
+				//
+				// options.appendCueCanvasTo can be an HTMLElement, or a DOM query.
+				// If the query fails, the canvas will be appended to the body as normal.
+				// If the query is successful, the canvas will be appended to the first matched element.
+
+				if (options.appendCueCanvasTo) {
+					var canvasParentNode = null;
+
+					if (options.appendCueCanvasTo instanceof HTMLElement) {
+						canvasParentNode = options.appendCueCanvasTo;
+					} else if (typeof(options.appendCueCanvasTo) === "string") {
+						try {
+							var canvasSearchResult = document.querySelectorAll(options.appendCueCanvasTo);
+							if (canvasSearchResult.length > 0) {
+								canvasParentNode = canvasSearchResult[0];
+							} else { throw null; /* Bounce to catch */ }
+						} catch(error) {
+							canvasParentNode = document.body;
+							options.appendCueCanvasTo = false;
+						}
+					} else {
+						canvasParentNode = document.body;
+						options.appendCueCanvasTo = false;
+					}
+
+					canvasParentNode.appendChild(containerObject);
+				} else {
+					document.body.appendChild(containerObject);
+				}
+
 				videoElement._containerObject = containerObject;
 				// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
 				containerObject.setAttribute("aria-live","polite");
@@ -1728,8 +1788,8 @@
 				"zIndex": 100,
 				"height": (videoMetrics.height - videoMetrics.controlHeight) + "px",
 				"width": videoMetrics.width + "px",
-				"top": videoMetrics.top + "px",
-				"left": videoMetrics.left + "px",
+				"top": (options.appendCueCanvasTo ? 0 : videoMetrics.top) + "px",
+				"left": (options.appendCueCanvasTo ? 0 : videoMetrics.left) + "px",
 				"color": "white",
 				"fontFamily": "Verdana, Helvetica, Arial, sans-serif",
 				"fontSize": baseFontSize + "pt",
@@ -1751,6 +1811,8 @@
 		
 			First parameter: Entire text data (UTF-8) of the retrieved SRT/WebVTT file. This parameter is mandatory. (really - what did
 			you expect it was going to do without it!)
+
+			Second parameter: Captionator internal options object. See the documentation for allowed values.
 		
 			RETURNS:
 		
@@ -1873,7 +1935,7 @@
 							}
 						}
 					}
-				
+
 					return cueStructure;
 				};
 				

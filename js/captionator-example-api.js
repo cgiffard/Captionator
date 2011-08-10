@@ -40,14 +40,14 @@ var generateMediaControls = function(videoElement) {
 						var readyStateTD, modeTD, toggleTD, trackToggle;
 						var currentTrack = trackList[trackIndex];
 						var trackRow = document.createElement("tr");
-					
+						
 						trackRow.innerHTML ="<td>" + currentTrack.kind + "</td>" +
 											"<td>" + currentTrack.label + "</td>" +
 											"<td>" + currentTrack.language + "</td>" +
 											"<td>" + ["Not Loaded","Loading","Loaded","Error"][currentTrack.readyState] + "</td>" +
 											"<td>" + ["Not Showing","Hidden","Showing"][currentTrack.mode] + "</td>" +
 											"<td></td>";
-					
+						
 						readyStateTD = trackRow.childNodes[trackRow.childNodes.length-3];
 						modeTD = trackRow.childNodes[trackRow.childNodes.length-2];
 						toggleTD = trackRow.childNodes[trackRow.childNodes.length-1];

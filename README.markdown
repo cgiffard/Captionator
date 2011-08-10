@@ -156,6 +156,19 @@ The following lists options which you can pass to captionator:
 * `enableDescriptionsByDefault` (Boolean) - as above, except for `description` track types instead of `caption` or `subtitle` types.
 * `exportObjects` (Boolean) - instructs Captionator to export its own implementation of the TimedTextTrack objects (TextTrack, TextTrackCue, etc.) and their relevant constants into the global scope. Captionator ordinarily keeps these within its own object. You might find this useful for creating code which utilises `instanceof` conditionals, or creates instances of these objects itself, which you want to be native-TextTrack-support-agnostic. (Phew, what a mouthful.)
 * `renderer` (Function) - sets an alternative renderer for captions & subtitles. You can utilise the WHATWG TimedTextTrack specification to manipulate or get information about the tracks themselves.
+* `processCueHTML` (Boolean) - determines whether HTML/WebVTT cue source is parsed. Defaults to true. If this is set to false, cue source will be retained as unprocessed text, and special WebVTT cue spans will be appended straight into the DOM (rather than perform their function as detailed in the WebVTT specification.) `metadata` tracks are never processed, regardless of the value of this setting.
+* `sanitiseCueHTML` (Boolean) - determines whether non-WebVTT-compliant tags are dropped when parsing, thereby sanitising the source of WebVTT cues. Defaults to true. Cue source is not sanitised when `processCueHTML` is set to false.
+* `controlHeight` (Integer) - defines an 'exclusion zone' (where cues will not be rendered) at the bottom of the video to allow for video controls. The available area for cues is determined based on the height of the video less the height of the video controls. By default, if the `controls` attribute is present on the video element, this is calculated automatically based on the user agent. Should the `controls` attribute be missing, this value is zero. If you want to implement your own controls, use this to tell captionator how tall they are.
+* `debugMode` (Boolean) - If true, draws a canvas with debugging information for cue positioning on top (in z-space) of the video. The canvas displays `vertical`, `vertical-lr`, and `horizontal` line divisions, as well as Captionator's own understanding of the available cue area (post cue-rendering.)
+* `appendCueCanvasTo` (HTMLElement | DOM Query as string) - Defines a node in the document within which Captionator should render the video cues. This function is intended to allow you to create a wrapper div and have Captionator render cues within it - hopefully easing the process of making a custom video player. If successful, and Captionator is able to find the wrapper node based on your input, it will set the `top` and `left` values of its own cue canvas to zero, rather than finding the offset position of the video element itself, and append its cue canvas within the wrapper when rendering. If the query fails, the cue canvas will be appended to the body as normal, and positioned using the offset position of the video element.
+
+#### Styling Options ####
+* `minimumFontSize` (Float) - Defines the minimum allowable font size with which Captionator will render cues (in points.) Defaults to 10pt.
+* `minimumLineHeight` (Float) - Defines the minimum line height with which Captionator will render cues (in points.) Defaults to 16pt.
+* `fontSizeVerticalPercentage` (Float) - The cue font size as a percentage (0 - 100) of the height of a given captioned video. Defaults to 4.5%.
+* `lineHeightRatio` (Float) - The ratio of line height to font size. Defaults to 1.5.
+* `cueBackgroundColour` (Array) - An array containing four items, each for: red (R), green (G), blue (B), and alpha (A), in that order, which define the background colour of cues. Defaults to [0,0,0,0.5].
+
 
 Video and Audio tracks (MediaTrack)
 -----------------------------------
