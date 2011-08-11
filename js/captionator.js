@@ -18,6 +18,7 @@
 	var fontSizeVerticalPercentage = 4.5;	//	Caption font size is 4.5% of the video height
 	var lineHeightRatio = 1.5;				//	Caption line height is 1.3 times the font size
 	var cueBackgroundColour	= [0,0,0,0.5];	//	R,G,B,A
+	var objectsCreated = false;				//	We don't want to create objects twice, or instanceof won't work
 	
 	var captionator = {
 		/*
@@ -151,639 +152,645 @@
 					return false;
 				}
 			}
-		
-			// Set up objects & types
-			// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
-			/**
-			 * @constructor
-			 */
-			captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault) {
 			
-				this.onload = function () {};
-				this.onerror = function() {};
-				this.oncuechange = function() {};
-			
-				this.id = id || "";
-				this.internalMode = captionator.TextTrack.OFF;
-				this.cues = new captionator.TextTrackCueList(this);
-				this.activeCues = new captionator.ActiveTextTrackCueList(this.cues,this);
-				this.kind = kind || "subtitles";
-				this.label = label || "";
-				this.language = language || "";
-				this.src = trackSource || "";
-				this.readyState = captionator.TextTrack.NONE;
-				this.internalDefault = isDefault || false;
-			
-				// Create getters and setters for mode
-				this.getMode = function() {
-					return this.internalMode;
-				};
-			
-				this.setMode = function(value) {
-					var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
-					if (allowedModes.indexOf(value) !== -1) {
-						if (value !== this.internalMode) {
-							this.internalMode = value;
-					
-							if (this.readyState === captionator.TextTrack.NONE && this.src.length > 0 && value > captionator.TextTrack.OFF) {
-								this.loadTrack(this.src,null);
-							}
-						
-							if (this.readyState === captionator.TextTrack.LOADED) {
-								// make sure we are actually showing current captions
-								captionator.rebuildCaptions(this.videoNode);
-							}
-					
-							if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
-								// actually hide the captions
-								if (this.videoNode.containerObject) {
-									try {
-										// With the new WebVTT renderer, this is not good behaviour, and it's a wonder it still works.
-										// I'll be looking to fix this ASAP.
-										this.videoNode.containerObject.parentNode.removeChild(this.videoNode.containerObject);
-									} catch(Error) {}
-								}
-							}
-						
-							if (value === captionator.TextTrack.OFF) {
-								// make sure the resource is reloaded next time (Is this correct behaviour?)
-								this.cues.length = 0; // Destroy existing cue data (bugfix)
-								this.readyState = captionator.TextTrack.NONE;
-							}
-						}
-					} else {
-						throw new Error("Illegal mode value for track: " + value);
-					}
-				};
-			
-				// Create getter for default
-				this.getDefault = function() {
-					return this.internalDefault;
-				};
-			
-				if (Object.prototype.__defineGetter__) {
-					this.__defineGetter__("mode", this.getMode);
-					this.__defineSetter__("mode", this.setMode);
-					this.__defineGetter__("default", this.getDefault);
-				} else if (Object.defineProperty) {
-					Object.defineProperty(this,"mode",
-						{get: this.getMode, set: this.setMode}
-					);
-					Object.defineProperty(this,"default",
-						{get: this.getDefault}
-					);
-				}
-			
-				this.loadTrack = function(source, callback) {
-					var captionData, ajaxObject = new XMLHttpRequest();
-					if (this.readyState === captionator.TextTrack.LOADED) {
-						if (callback instanceof Function) {
-							callback(captionData);
-						}
-					} else {
-						this.src = source;
-						this.readyState = captionator.TextTrack.LOADING;
-					
-						var currentTrackElement = this;
-						ajaxObject.open('GET', source, true);
-						ajaxObject.onreadystatechange = function (eventData) {
-							if (ajaxObject.readyState === 4) {
-								if(ajaxObject.status === 200) {
-									var TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
-									if (currentTrackElement.kind === "metadata") {
-										// People can load whatever data they please into metadata tracks.
-										// Don't process it.
-										TrackProcessingOptions.processCueHTML = false;
-										TrackProcessingOptions.sanitiseCueHTML = false;
-									}
-									
-									captionData = captionator.parseCaptions(ajaxObject.responseText,TrackProcessingOptions);
-									currentTrackElement.readyState = captionator.TextTrack.LOADED;
-									currentTrackElement.cues.loadCues(captionData);
-									captionator.rebuildCaptions(currentTrackElement.videoNode);
-									currentTrackElement.onload.call(this);
-								
-									if (callback instanceof Function) {
-										callback.call(currentTrackElement,captionData);
-									}
-								} else {
-									// Throw error handler, if defined
-									currentTrackElement.readyState = captionator.TextTrack.ERROR;
-									currentTrackElement.onerror();
-								}
-							}
-						};
-						try {
-							ajaxObject.send(null);
-						} catch(Error) {
-							// Throw error handler, if defined
-							currentTrackElement.readyState = captionator.TextTrack.ERROR;
-							currentTrackElement.onerror(Error);
-						}
-					}
-				};
-			
-				// mutableTextTrack.addCue(cue)
-				// Adds the given cue to mutableTextTrack's text track list of cues.
-				// Raises an exception if the argument is null, associated with another text track, or already in the list of cues.
-			
-				this.addCue = function(cue) {
-					if (cue && cue instanceof captionator.TextTrackCue) {
-						this.cues.addCue(cue);
-					} else {
-						throw Error("The argument is null or not an instance of TextTrackCue.");
-					}
-				};
-			
-				// mutableTextTrack.removeCue(cue)
-				// Removes the given cue from mutableTextTrack's text track list of cues.
-				// Raises an exception if the argument is null, associated with another text track, or not in the list of cues.
-			
-				this.removeCue = function() {
+			if (!objectsCreated) {
+				// Set up objects & types
+				// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
+				/**
+				 * @constructor
+				 */
+				captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault) {
 				
-				};
-			};
-			// Define constants for TextTrack.readyState
-			captionator.TextTrack.NONE = 0;
-			captionator.TextTrack.LOADING = 1;
-			captionator.TextTrack.LOADED = 2;
-			captionator.TextTrack.ERROR = 3;
-			// Define constants for TextTrack.mode
-			captionator.TextTrack.OFF = 0;
-			captionator.TextTrack.HIDDEN = 1;
-			captionator.TextTrack.SHOWING = 2;
-		
-			// Define read-only properties
-			/**
-			 * @constructor
-			 */
-			captionator.TextTrackCueList = function TextTrackCueList(track) {
-				this.track = track instanceof captionator.TextTrack ? track : null;
-			
-				this.getCueById = function(cueID) {
-					return this.filter(function(currentCue) {
-						return currentCue.id === cueID;
-					})[0];
-				};
-			
-				this.loadCues = function(cueData) {
-					for (var cueIndex = 0; cueIndex < cueData.length; cueIndex ++) {
-						cueData[cueIndex].track = this.track;
-						Array.prototype.push.call(this,cueData[cueIndex]);
-					}
-				};
-
-				this.addCue = function(cue) {
-					if (cue && cue instanceof captionator.TextTrackCue) {
-						if (cue.track === this.track || !cue.track) {
-							// TODO: Check whether cue is already in list of cues.
-							// TODO: Sort cue list based on TextTrackCue.startTime.
-							Array.prototype.push.call(this,cue);
+					this.onload = function () {};
+					this.onerror = function() {};
+					this.oncuechange = function() {};
+				
+					this.id = id || "";
+					this.internalMode = captionator.TextTrack.OFF;
+					this.cues = new captionator.TextTrackCueList(this);
+					this.activeCues = new captionator.ActiveTextTrackCueList(this.cues,this);
+					this.kind = kind || "subtitles";
+					this.label = label || "";
+					this.language = language || "";
+					this.src = trackSource || "";
+					this.readyState = captionator.TextTrack.NONE;
+					this.internalDefault = isDefault || false;
+				
+					// Create getters and setters for mode
+					this.getMode = function() {
+						return this.internalMode;
+					};
+				
+					this.setMode = function(value) {
+						var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
+						if (allowedModes.indexOf(value) !== -1) {
+							if (value !== this.internalMode) {
+								this.internalMode = value;
+						
+								if (this.readyState === captionator.TextTrack.NONE && this.src.length > 0 && value > captionator.TextTrack.OFF) {
+									this.loadTrack(this.src,null);
+								}
+							
+								if (this.readyState === captionator.TextTrack.LOADED) {
+									// make sure we are actually showing current captions
+									captionator.rebuildCaptions(this.videoNode);
+								}
+						
+								if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
+									// actually hide the captions
+									if (this.videoNode.containerObject) {
+										try {
+											// With the new WebVTT renderer, this is not good behaviour, and it's a wonder it still works.
+											// I'll be looking to fix this ASAP.
+											this.videoNode.containerObject.parentNode.removeChild(this.videoNode.containerObject);
+										} catch(Error) {}
+									}
+								}
+							
+								if (value === captionator.TextTrack.OFF) {
+									// make sure the resource is reloaded next time (Is this correct behaviour?)
+									this.cues.length = 0; // Destroy existing cue data (bugfix)
+									this.readyState = captionator.TextTrack.NONE;
+								}
+							}
 						} else {
-							throw Error("This cue is associated with a different track!");
+							throw new Error("Illegal mode value for track: " + value);
 						}
-					} else {
-						throw Error("The argument is null or not an instance of TextTrackCue.");
-					}
-				};
-			
-				this.toString = function() {
-					return "[TextTrackCueList]";
-				};
-			};
-			captionator.TextTrackCueList.prototype = [];
-		
-			/**
-			 * @constructor
-			 */
-			captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList,textTrack) {
-				// Among active cues:
-			
-				// The text track cues of a media element's text tracks are ordered relative to each
-				// other in the text track cue order, which is determined as follows: first group the
-				// cues by their text track, with the groups being sorted in the same order as their
-				// text tracks appear in the media element's list of text tracks; then, within each
-				// group, cues must be sorted by their start time, earliest first; then, any cues with
-				// the same start time must be sorted by their end time, earliest first; and finally,
-				// any cues with identical end times must be sorted in the order they were created (so
-				// e.g. for cues from a WebVTT file, that would be the order in which the cues were
-				// listed in the file).
-
-				this.refreshCues = function() {
-					if (textTrackCueList.length) {
-						var cueList = this;
-						var cueListChanged = false;
-						var oldCueList = [].slice.call(this,0);
-						this.length = 0;
-						
-						textTrackCueList.forEach(function(cue) {
-							if (cue.active) {
-								cueList.push(cue);
-
-								if (cueList[cueList.length-1] !== oldCueList[cueList.length-1]) {
-									cueListChanged = true;
-								}
-							}
-						});
-
-						if (cueListChanged) {
-							try {
-								textTrack.oncuechange();
-							} catch(error){}
-						}
-					}
-				};
-			
-				this.toString = function() {
-					return "[ActiveTextTrackCueList]";
-				};
-			
-				this.refreshCues();
-			};
-			captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList(null);
-		
-			/**
-			 * @constructor
-			 */
-			captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
-				// Set up internal data store
-				this.id = id;
-				this.track = track instanceof captionator.TextTrack ? track : null;
-				this.startTime = parseFloat(startTime);
-				this.endTime = parseFloat(endTime);
-				this.text = typeof(text) === "string" || text instanceof captionator.CaptionatorCueStructure ? text : "";
-				this.settings = typeof(settings) === "string" ? settings : "";
-				this.intSettings = {};
-				this.pauseOnExit = !!pauseOnExit;
-				this.wasActive = false;
-			
-				// Parse settings & set up cue defaults
-			
-				// A writing direction, either horizontal (a line extends horizontally and is positioned vertically,
-				// with consecutive lines displayed below each other), vertical growing left (a line extends vertically
-				// and is positioned horizontally, with consecutive lines displayed to the left of each other), or
-				// vertical growing right (a line extends vertically and is positioned horizontally, with consecutive
-				// lines displayed to the right of each other).
-				// Values:
-				// horizontal, vertical, vertical-lr
-				this.direction = "horizontal";
-			
-				// A boolean indicating whether the line's position is a line position (positioned to a multiple of the
-				// line dimensions of the first line of the cue), or whether it is a percentage of the dimension of the video.
-				this.snapToLines = true;
-			
-				// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
-				// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
-				// position is to depend on the other active tracks.
-				this.linePosition = "auto";
-			
-				// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
-				// of the video, as defined by the writing direction.
-				this.textPosition = 50;
-			
-				// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
-				// be interpreted as a percentage of the video, as defined by the writing direction.
-				this.size = 100;
-			
-				// An alignment for the text of each line of the cue, either start alignment (the text is aligned towards its
-				// start side), middle alignment (the text is aligned centered between its start and end sides), end alignment
-				// (the text is aligned towards its end side). Which sides are the start and end sides depends on the
-				// Unicode bidirectional algorithm and the writing direction. [BIDI]
-				// Values:
-				// start, middle, end
-				this.alignment = "middle";
-			
-				// Parse VTT Settings...
-				if (this.settings.length) {
-					var intSettings = this.intSettings;
-					var currentCue = this;
-					settings = settings.split(/\s+/).filter(function(settingItem) { return settingItem.length > 0;});
-					if (settings instanceof Array) {
-						settings.forEach(function(cueItem) {
-							var settingMap = {"D":"direction","L":"linePosition","T":"textPosition","A":"alignment","S":"size"};
-							cueItem = cueItem.split(":");
-							if (settingMap[cueItem[0]]) {
-								intSettings[settingMap[cueItem[0]]] = cueItem[1];
-							}
-						
-							if (settingMap[cueItem[0]] in currentCue) {
-								currentCue[settingMap[cueItem[0]]] = cueItem[1];
-							}
-						});
-					}
-				}
+					};
 				
-				if (this.linePosition.match(/\%/)) {
-					this.snapToLines = false;
-				}
-			
-				// Functions defined by spec (getters, kindof)
-				this.getCueAsSource = function getCueAsSource() {
-					// Choosing the below line instead will mean that the raw, unprocessed source will be returned instead.
-					// Not really sure which is the correct behaviour.
-					// return this.text instanceof captionator.CaptionatorCueStructure? this.text.cueSource : this.text;
-					return String(this.text);
-				};
-			
-				this.getCueAsHTML = function getCueAsHTML() {
-					var DOMFragment = document.createDocumentFragment();
-					var DOMNode = document.createElement("div");
-					DOMNode.innerHTML = String(this.text);
-					
-					Array.prototype.forEach.call(DOMNode.childNodes,function(child) {
-						DOMFragment.appendChild(child.cloneNode(true));
-					});
+					// Create getter for default
+					this.getDefault = function() {
+						return this.internalDefault;
+					};
 				
-					return DOMFragment;
-				};
-			
-				this.isActive = function() {
-					var currentTime = 0;
-					if (this.track instanceof captionator.TextTrack) {
-						if (this.track.mode === captionator.TextTrack.SHOWING && this.track.readyState === captionator.TextTrack.LOADED) {
-							try {
-								currentTime = this.track.videoNode.currentTime;
-								if (this.startTime <= currentTime && this.endTime >= currentTime) {
-									// Fire enter event if we were not active and now are
-									if (!this.wasActive) {
-										this.wasActive = true;
-										this.onenter();
+					if (Object.prototype.__defineGetter__) {
+						this.__defineGetter__("mode", this.getMode);
+						this.__defineSetter__("mode", this.setMode);
+						this.__defineGetter__("default", this.getDefault);
+					} else if (Object.defineProperty) {
+						Object.defineProperty(this,"mode",
+							{get: this.getMode, set: this.setMode}
+						);
+						Object.defineProperty(this,"default",
+							{get: this.getDefault}
+						);
+					}
+				
+					this.loadTrack = function(source, callback) {
+						var captionData, ajaxObject = new XMLHttpRequest();
+						if (this.readyState === captionator.TextTrack.LOADED) {
+							if (callback instanceof Function) {
+								callback(captionData);
+							}
+						} else {
+							this.src = source;
+							this.readyState = captionator.TextTrack.LOADING;
+						
+							var currentTrackElement = this;
+							ajaxObject.open('GET', source, true);
+							ajaxObject.onreadystatechange = function (eventData) {
+								if (ajaxObject.readyState === 4) {
+									if(ajaxObject.status === 200) {
+										var TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
+										if (currentTrackElement.kind === "metadata") {
+											// People can load whatever data they please into metadata tracks.
+											// Don't process it.
+											TrackProcessingOptions.processCueHTML = false;
+											TrackProcessingOptions.sanitiseCueHTML = false;
+										}
+										
+										captionData = captionator.parseCaptions(ajaxObject.responseText,TrackProcessingOptions);
+										currentTrackElement.readyState = captionator.TextTrack.LOADED;
+										currentTrackElement.cues.loadCues(captionData);
+										captionator.rebuildCaptions(currentTrackElement.videoNode);
+										currentTrackElement.onload.call(this);
+									
+										if (callback instanceof Function) {
+											callback.call(currentTrackElement,captionData);
+										}
+									} else {
+										// Throw error handler, if defined
+										currentTrackElement.readyState = captionator.TextTrack.ERROR;
+										currentTrackElement.onerror();
 									}
-
-									return true;
 								}
-							} catch(Error) {
-								return false;
-							}
-						}
-					}
-					
-					// Fire exit event if we were active and now are not
-					if (this.wasActive) {
-						this.wasActive = false;
-						this.onexit();
-					}
-
-					return false;
-				};
-			
-				if (Object.prototype.__defineGetter__) {
-					this.__defineGetter__("active", this.isActive);
-				} else if (Object.defineProperty) {
-					Object.defineProperty(this,"active",
-						{get: this.isActive}
-					);
-				}
-				
-				this.toString = function toString() {
-					return "TextTrackCue:" + this.id + "\n" + String(this.text);
-				};
-				
-				// Events defined by spec
-				this.onenter = function() {};
-				this.onexit = function() {};
-			};
-		
-			//	Captionator media extensions
-			/**
-			 * @constructor
-			 */
-			captionator.MediaTrack = function MediaTrack(id,kind,label,language,src,type,isDefault) {
-				// This function is under construction!
-				// Eventually, the idea is that captionator will support timed video and audio tracks in addition to text subtitles
-				
-				var getSupportedMediaSource = function(sources) {
-					//	Thanks Mr Pilgrim! :)
-					var supportedSource = sources
-						.filter(function(source,index) {
+							};
 							try {
-								var mediaElement = document.createElement(source.getAttribute("type").split("/").shift());
-								return !!(mediaElement.canPlayType && mediaElement.canPlayType(source.getAttribute("type")).replace(/no/, ''));
+								ajaxObject.send(null);
 							} catch(Error) {
-								//	(The type fragment before the / probably didn't match to 'video' or 'audio'. So... we don't support it.)
-								return false;
+								// Throw error handler, if defined
+								currentTrackElement.readyState = captionator.TextTrack.ERROR;
+								currentTrackElement.onerror(Error);
 							}
-						})
-						.shift()
-						.getAttribute("src");
+						}
+					};
+				
+					// mutableTextTrack.addCue(cue)
+					// Adds the given cue to mutableTextTrack's text track list of cues.
+					// Raises an exception if the argument is null, associated with another text track, or already in the list of cues.
+				
+					this.addCue = function(cue) {
+						if (cue && cue instanceof captionator.TextTrackCue) {
+							this.cues.addCue(cue);
+						} else {
+							throw Error("The argument is null or not an instance of TextTrackCue.");
+						}
+					};
+				
+					// mutableTextTrack.removeCue(cue)
+					// Removes the given cue from mutableTextTrack's text track list of cues.
+					// Raises an exception if the argument is null, associated with another text track, or not in the list of cues.
+				
+					this.removeCue = function() {
+					
+					};
+				};
+				// Define constants for TextTrack.readyState
+				captionator.TextTrack.NONE = 0;
+				captionator.TextTrack.LOADING = 1;
+				captionator.TextTrack.LOADED = 2;
+				captionator.TextTrack.ERROR = 3;
+				// Define constants for TextTrack.mode
+				captionator.TextTrack.OFF = 0;
+				captionator.TextTrack.HIDDEN = 1;
+				captionator.TextTrack.SHOWING = 2;
 			
-					return supportedSource;
-				};
-		
-				this.onload = function () {};
-				this.onerror = function() {};
-		
-				this.id = id || "";
-				this.internalMode = captionator.TextTrack.OFF;
-				this.internalMode = captionator.TextTrack.OFF;
-				this.mediaElement = null;
-				this.kind = kind || "audiodescription";
-				this.label = label || "";
-				this.language = language || "";
-				this.readyState = captionator.TextTrack.NONE;
-				this.type = type || "x/unknown"; //	MIME type
-				this.mediaType = null;
-				this.src = "";
-		
-				if (typeof(src) === "string") {
-					this.src = src;
-				} else if (src instanceof NodeList) {
-					this.src = getSupportedMediaSource(src);
-				}
-		
-				if (this.type.match(/^video\//)) {
-					this.mediaType = "video";
-				} else if (this.type.match(/^audio\//)) {
-					this.mediaType = "audio";
-				}
-		
-				//	Create getters and setters for mode
-				this.getMode = function() {
-					return this.internalMode;
-				};
-		
-				this.setMode = function(value) {
-					var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
-					if (allowedModes.indexOf(value) !== -1) {
-						if (value !== this.internalMode) {
-							this.internalMode = value;
-							if (value === captionator.TextTrack.HIDDEN && !this.mediaElement) {
-								this.buildMediaElement();
-							}
-					
-							if (value === captionator.TextTrack.SHOWING) {
-								this.showMediaElement();
-							}
-					
-							if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
-								this.hideMediaElement();
-							}
+				// Define read-only properties
+				/**
+				 * @constructor
+				 */
+				captionator.TextTrackCueList = function TextTrackCueList(track) {
+					this.track = track instanceof captionator.TextTrack ? track : null;
+				
+					this.getCueById = function(cueID) {
+						return this.filter(function(currentCue) {
+							return currentCue.id === cueID;
+						})[0];
+					};
+				
+					this.loadCues = function(cueData) {
+						for (var cueIndex = 0; cueIndex < cueData.length; cueIndex ++) {
+							cueData[cueIndex].track = this.track;
+							Array.prototype.push.call(this,cueData[cueIndex]);
 						}
-					} else {
-						throw new Error("Illegal mode value for track.");
-					}
-				};
-		
-				if (Object.prototype.__defineGetter__) {
-					this.__defineGetter__("mode", this.getMode);
-					this.__defineSetter__("mode", this.setMode);
-				} else if (Object.defineProperty) {
-					Object.defineProperty(this,"mode",
-						{get: this.getMode, set: this.setMode}
-					);
-				}
-		
-				this.hideMediaElement = function() {
-					if (this.mediaElement) {
-						if (!this.mediaElement.paused) {
-							this.mediaElement.pause();
-						}
-				
-						if (this.mediaElement instanceof HTMLVideoElement) {
-							this.mediaElement.style.display = "none";
-						}
-					}
-				};
-		
-				this.showMediaElement = function() {
-					if (!this.mediaElement) {
-						this.buildMediaElement();
-						document.body.appendChild(this.mediaElement);
-					} else {
-						if (!this.mediaElement.parentNode) {
-							document.body.appendChild(this.mediaElement);
-						}
-				
-						if (this.mediaElement instanceof HTMLVideoElement) {
-							this.mediaElement.style.display = "block";
-						}
-					}
-				};
-		
-				this.buildMediaElement = function() {
-					try {
-						if (this.type.match(/^video\//)) {
-							this.mediaElement = document.createElement("video");
-							this.mediaElement.className = "captionator-mediaElement-" + this.kind;
-							captionator.styleNode(this.mediaElement,this.kind,this.videoNode);
-					
-						} else if (this.type.match(/^audio\//)) {
-							this.mediaElement = new Audio();
-						}
-				
-						this.mediaElement.type = this.type;
-						this.mediaElement.src = this.src;
-						this.mediaElement.load();
-						this.mediaElement.trackObject = this;
-						this.readyState = captionator.TextTrack.LOADING;
-						var mediaElement = this.mediaElement;
-				
-						this.mediaElement.addEventListener("progress",function(eventData) {
-							mediaElement.trackObject.readyState = captionator.TextTrack.LOADING;
-						},false);
-				
-						this.mediaElement.addEventListener("canplaythrough",function(eventData) {
-							mediaElement.trackObject.readyState = captionator.TextTrack.LOADED;
-							mediaElement.trackObject.onload.call(mediaElement.trackObject);
-						},false);
-				
-						this.mediaElement.addEventListener("error",function(eventData) {
-							mediaElement.trackObject.readyState = captionator.TextTrack.ERROR;
-							mediaElement.trackObject.mode = captionator.TextTrack.OFF;
-							mediaElement.trackObject.mediaElement = null;
-							mediaElement.trackObject.onerror.call(mediaElement.trackObject,eventData);
-						},false);
-				
-					} catch(Error) {
-						this.readyState = captionator.TextTrack.ERROR;
-						this.mode = captionator.TextTrack.OFF;
-						this.mediaElement = null;
+					};
 
-						if (this.onerror) {
-							this.onerror.apply(this,Error);
+					this.addCue = function(cue) {
+						if (cue && cue instanceof captionator.TextTrackCue) {
+							if (cue.track === this.track || !cue.track) {
+								// TODO: Check whether cue is already in list of cues.
+								// TODO: Sort cue list based on TextTrackCue.startTime.
+								Array.prototype.push.call(this,cue);
+							} else {
+								throw Error("This cue is associated with a different track!");
+							}
+						} else {
+							throw Error("The argument is null or not an instance of TextTrackCue.");
+						}
+					};
+				
+					this.toString = function() {
+						return "[TextTrackCueList]";
+					};
+				};
+				captionator.TextTrackCueList.prototype = [];
+			
+				/**
+				 * @constructor
+				 */
+				captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList,textTrack) {
+					// Among active cues:
+				
+					// The text track cues of a media element's text tracks are ordered relative to each
+					// other in the text track cue order, which is determined as follows: first group the
+					// cues by their text track, with the groups being sorted in the same order as their
+					// text tracks appear in the media element's list of text tracks; then, within each
+					// group, cues must be sorted by their start time, earliest first; then, any cues with
+					// the same start time must be sorted by their end time, earliest first; and finally,
+					// any cues with identical end times must be sorted in the order they were created (so
+					// e.g. for cues from a WebVTT file, that would be the order in which the cues were
+					// listed in the file).
+
+					this.refreshCues = function() {
+						if (textTrackCueList.length) {
+							var cueList = this;
+							var cueListChanged = false;
+							var oldCueList = [].slice.call(this,0);
+							this.length = 0;
+							
+							textTrackCueList.forEach(function(cue) {
+								if (cue.active) {
+									cueList.push(cue);
+
+									if (cueList[cueList.length-1] !== oldCueList[cueList.length-1]) {
+										cueListChanged = true;
+									}
+								}
+							});
+
+							if (cueListChanged) {
+								try {
+									textTrack.oncuechange();
+								} catch(error){}
+							}
+						}
+					};
+				
+					this.toString = function() {
+						return "[ActiveTextTrackCueList]";
+					};
+				
+					this.refreshCues();
+				};
+				captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList(null);
+			
+				/**
+				 * @constructor
+				 */
+				captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
+					// Set up internal data store
+					this.id = id;
+					this.track = track instanceof captionator.TextTrack ? track : null;
+					this.startTime = parseFloat(startTime);
+					this.endTime = parseFloat(endTime);
+					this.text = typeof(text) === "string" || text instanceof captionator.CaptionatorCueStructure ? text : "";
+					this.settings = typeof(settings) === "string" ? settings : "";
+					this.intSettings = {};
+					this.pauseOnExit = !!pauseOnExit;
+					this.wasActive = false;
+				
+					// Parse settings & set up cue defaults
+				
+					// A writing direction, either horizontal (a line extends horizontally and is positioned vertically,
+					// with consecutive lines displayed below each other), vertical growing left (a line extends vertically
+					// and is positioned horizontally, with consecutive lines displayed to the left of each other), or
+					// vertical growing right (a line extends vertically and is positioned horizontally, with consecutive
+					// lines displayed to the right of each other).
+					// Values:
+					// horizontal, vertical, vertical-lr
+					this.direction = "horizontal";
+				
+					// A boolean indicating whether the line's position is a line position (positioned to a multiple of the
+					// line dimensions of the first line of the cue), or whether it is a percentage of the dimension of the video.
+					this.snapToLines = true;
+				
+					// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
+					// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
+					// position is to depend on the other active tracks.
+					this.linePosition = "auto";
+				
+					// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
+					// of the video, as defined by the writing direction.
+					this.textPosition = 50;
+				
+					// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
+					// be interpreted as a percentage of the video, as defined by the writing direction.
+					this.size = 100;
+				
+					// An alignment for the text of each line of the cue, either start alignment (the text is aligned towards its
+					// start side), middle alignment (the text is aligned centered between its start and end sides), end alignment
+					// (the text is aligned towards its end side). Which sides are the start and end sides depends on the
+					// Unicode bidirectional algorithm and the writing direction. [BIDI]
+					// Values:
+					// start, middle, end
+					this.alignment = "middle";
+				
+					// Parse VTT Settings...
+					if (this.settings.length) {
+						var intSettings = this.intSettings;
+						var currentCue = this;
+						settings = settings.split(/\s+/).filter(function(settingItem) { return settingItem.length > 0;});
+						if (settings instanceof Array) {
+							settings.forEach(function(cueItem) {
+								var settingMap = {"D":"direction","L":"linePosition","T":"textPosition","A":"alignment","S":"size"};
+								cueItem = cueItem.split(":");
+								if (settingMap[cueItem[0]]) {
+									intSettings[settingMap[cueItem[0]]] = cueItem[1];
+								}
+							
+								if (settingMap[cueItem[0]] in currentCue) {
+									currentCue[settingMap[cueItem[0]]] = cueItem[1];
+								}
+							});
 						}
 					}
+					
+					if (this.linePosition.match(/\%/)) {
+						this.snapToLines = false;
+					}
+				
+					// Functions defined by spec (getters, kindof)
+					this.getCueAsSource = function getCueAsSource() {
+						// Choosing the below line instead will mean that the raw, unprocessed source will be returned instead.
+						// Not really sure which is the correct behaviour.
+						// return this.text instanceof captionator.CaptionatorCueStructure? this.text.cueSource : this.text;
+						return String(this.text);
+					};
+				
+					this.getCueAsHTML = function getCueAsHTML() {
+						var DOMFragment = document.createDocumentFragment();
+						var DOMNode = document.createElement("div");
+						DOMNode.innerHTML = String(this.text);
+						
+						Array.prototype.forEach.call(DOMNode.childNodes,function(child) {
+							DOMFragment.appendChild(child.cloneNode(true));
+						});
+					
+						return DOMFragment;
+					};
+				
+					this.isActive = function() {
+						var currentTime = 0;
+						if (this.track instanceof captionator.TextTrack) {
+							if (this.track.mode === captionator.TextTrack.SHOWING && this.track.readyState === captionator.TextTrack.LOADED) {
+								try {
+									currentTime = this.track.videoNode.currentTime;
+									
+									if (this.startTime <= currentTime && this.endTime >= currentTime) {
+										// Fire enter event if we were not active and now are
+										if (!this.wasActive) {
+											this.wasActive = true;
+											this.onenter();
+										}
+
+										return true;
+									}
+								} catch(Error) {
+									return false;
+								}
+							}
+						}
+						
+						// Fire exit event if we were active and now are not
+						if (this.wasActive) {
+							this.wasActive = false;
+							this.onexit();
+						}
+
+						return false;
+					};
+				
+					if (Object.prototype.__defineGetter__) {
+						this.__defineGetter__("active", this.isActive);
+					} else if (Object.defineProperty) {
+						Object.defineProperty(this,"active",
+							{get: this.isActive}
+						);
+					}
+					
+					this.toString = function toString() {
+						return "TextTrackCue:" + this.id + "\n" + String(this.text);
+					};
+					
+					// Events defined by spec
+					this.onenter = function() {};
+					this.onexit = function() {};
 				};
-			};
-		
-			// Captionator internal cue structure object
-			/**
-			 * @constructor
-			 */
-			captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource,options) {
-				var cueStructureObject = this;
-				this.isTimeDependent = false;
-				this.cueSource = cueSource;
-				this.options = options;
-				this.processedCue = null;
-				this.toString = function toString(currentTimestamp) {
-					if (options.processCueHTML !== false) {
-						var processLayer = function(layerObject,depth) {
-							if (cueStructureObject.processedCue === null) {
-								var compositeHTML = "", itemIndex, cueChunk;
-								for (itemIndex in layerObject) {
-									if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
-										// We're not a prototype function or local property, and we're in range
-										cueChunk = layerObject[itemIndex];
-										// Don't generate text from the token if it has no contents
-										if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
-											if (cueChunk.token === "v") {
-												compositeHTML +="<q data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
-																"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "' " + 
-																"title=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\">" +
-																processLayer(cueChunk.children,depth+1) +
-																"</q>";
-											} else if(cueChunk.token === "c") {
-												compositeHTML +="<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
-																processLayer(cueChunk.children,depth+1) +
-																"</span>";
-											} else if(cueChunk.timeIn > 0) {
-												// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
-												if ((currentTimestamp === null || currentTimestamp === undefined) ||
-													(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
-											
-													compositeHTML +="<span class='webvtt-timestamp-span' " +
-																	"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
+			
+				//	Captionator media extensions
+				/**
+				 * @constructor
+				 */
+				captionator.MediaTrack = function MediaTrack(id,kind,label,language,src,type,isDefault) {
+					// This function is under construction!
+					// Eventually, the idea is that captionator will support timed video and audio tracks in addition to text subtitles
+					
+					var getSupportedMediaSource = function(sources) {
+						//	Thanks Mr Pilgrim! :)
+						var supportedSource = sources
+							.filter(function(source,index) {
+								try {
+									var mediaElement = document.createElement(source.getAttribute("type").split("/").shift());
+									return !!(mediaElement.canPlayType && mediaElement.canPlayType(source.getAttribute("type")).replace(/no/, ''));
+								} catch(Error) {
+									//	(The type fragment before the / probably didn't match to 'video' or 'audio'. So... we don't support it.)
+									return false;
+								}
+							})
+							.shift()
+							.getAttribute("src");
+				
+						return supportedSource;
+					};
+			
+					this.onload = function () {};
+					this.onerror = function() {};
+			
+					this.id = id || "";
+					this.internalMode = captionator.TextTrack.OFF;
+					this.internalMode = captionator.TextTrack.OFF;
+					this.mediaElement = null;
+					this.kind = kind || "audiodescription";
+					this.label = label || "";
+					this.language = language || "";
+					this.readyState = captionator.TextTrack.NONE;
+					this.type = type || "x/unknown"; //	MIME type
+					this.mediaType = null;
+					this.src = "";
+			
+					if (typeof(src) === "string") {
+						this.src = src;
+					} else if (src instanceof NodeList) {
+						this.src = getSupportedMediaSource(src);
+					}
+			
+					if (this.type.match(/^video\//)) {
+						this.mediaType = "video";
+					} else if (this.type.match(/^audio\//)) {
+						this.mediaType = "audio";
+					}
+			
+					//	Create getters and setters for mode
+					this.getMode = function() {
+						return this.internalMode;
+					};
+			
+					this.setMode = function(value) {
+						var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
+						if (allowedModes.indexOf(value) !== -1) {
+							if (value !== this.internalMode) {
+								this.internalMode = value;
+								if (value === captionator.TextTrack.HIDDEN && !this.mediaElement) {
+									this.buildMediaElement();
+								}
+						
+								if (value === captionator.TextTrack.SHOWING) {
+									this.showMediaElement();
+								}
+						
+								if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
+									this.hideMediaElement();
+								}
+							}
+						} else {
+							throw new Error("Illegal mode value for track.");
+						}
+					};
+			
+					if (Object.prototype.__defineGetter__) {
+						this.__defineGetter__("mode", this.getMode);
+						this.__defineSetter__("mode", this.setMode);
+					} else if (Object.defineProperty) {
+						Object.defineProperty(this,"mode",
+							{get: this.getMode, set: this.setMode}
+						);
+					}
+			
+					this.hideMediaElement = function() {
+						if (this.mediaElement) {
+							if (!this.mediaElement.paused) {
+								this.mediaElement.pause();
+							}
+					
+							if (this.mediaElement instanceof HTMLVideoElement) {
+								this.mediaElement.style.display = "none";
+							}
+						}
+					};
+			
+					this.showMediaElement = function() {
+						if (!this.mediaElement) {
+							this.buildMediaElement();
+							document.body.appendChild(this.mediaElement);
+						} else {
+							if (!this.mediaElement.parentNode) {
+								document.body.appendChild(this.mediaElement);
+							}
+					
+							if (this.mediaElement instanceof HTMLVideoElement) {
+								this.mediaElement.style.display = "block";
+							}
+						}
+					};
+			
+					this.buildMediaElement = function() {
+						try {
+							if (this.type.match(/^video\//)) {
+								this.mediaElement = document.createElement("video");
+								this.mediaElement.className = "captionator-mediaElement-" + this.kind;
+								captionator.styleNode(this.mediaElement,this.kind,this.videoNode);
+						
+							} else if (this.type.match(/^audio\//)) {
+								this.mediaElement = new Audio();
+							}
+					
+							this.mediaElement.type = this.type;
+							this.mediaElement.src = this.src;
+							this.mediaElement.load();
+							this.mediaElement.trackObject = this;
+							this.readyState = captionator.TextTrack.LOADING;
+							var mediaElement = this.mediaElement;
+					
+							this.mediaElement.addEventListener("progress",function(eventData) {
+								mediaElement.trackObject.readyState = captionator.TextTrack.LOADING;
+							},false);
+					
+							this.mediaElement.addEventListener("canplaythrough",function(eventData) {
+								mediaElement.trackObject.readyState = captionator.TextTrack.LOADED;
+								mediaElement.trackObject.onload.call(mediaElement.trackObject);
+							},false);
+					
+							this.mediaElement.addEventListener("error",function(eventData) {
+								mediaElement.trackObject.readyState = captionator.TextTrack.ERROR;
+								mediaElement.trackObject.mode = captionator.TextTrack.OFF;
+								mediaElement.trackObject.mediaElement = null;
+								mediaElement.trackObject.onerror.call(mediaElement.trackObject,eventData);
+							},false);
+					
+						} catch(Error) {
+							this.readyState = captionator.TextTrack.ERROR;
+							this.mode = captionator.TextTrack.OFF;
+							this.mediaElement = null;
+
+							if (this.onerror) {
+								this.onerror.apply(this,Error);
+							}
+						}
+					};
+				};
+			
+				// Captionator internal cue structure object
+				/**
+				 * @constructor
+				 */
+				captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource,options) {
+					var cueStructureObject = this;
+					this.isTimeDependent = false;
+					this.cueSource = cueSource;
+					this.options = options;
+					this.processedCue = null;
+					this.toString = function toString(currentTimestamp) {
+						if (options.processCueHTML !== false) {
+							var processLayer = function(layerObject,depth) {
+								if (cueStructureObject.processedCue === null) {
+									var compositeHTML = "", itemIndex, cueChunk;
+									for (itemIndex in layerObject) {
+										if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
+											// We're not a prototype function or local property, and we're in range
+											cueChunk = layerObject[itemIndex];
+											// Don't generate text from the token if it has no contents
+											if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
+												if (cueChunk.token === "v") {
+													compositeHTML +="<q data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
+																	"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "' " + 
+																	"title=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\">" +
+																	processLayer(cueChunk.children,depth+1) +
+																	"</q>";
+												} else if(cueChunk.token === "c") {
+													compositeHTML +="<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
 																	processLayer(cueChunk.children,depth+1) +
 																	"</span>";
+												} else if(cueChunk.timeIn > 0) {
+													// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
+													if ((currentTimestamp === null || currentTimestamp === undefined) ||
+														(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
+												
+														compositeHTML +="<span class='webvtt-timestamp-span' " +
+																		"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
+																		processLayer(cueChunk.children,depth+1) +
+																		"</span>";
+													}
+												} else {
+													compositeHTML +=cueChunk.rawToken +
+																	processLayer(cueChunk.children,depth+1) +
+																	"</" + cueChunk.token + ">";
 												}
+											} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
+												compositeHTML += cueChunk;
 											} else {
-												compositeHTML +=cueChunk.rawToken +
-																processLayer(cueChunk.children,depth+1) +
-																"</" + cueChunk.token + ">";
+												// Didn't match - file a bug!
 											}
-										} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
-											compositeHTML += cueChunk;
-										} else {
-											// Didn't match - file a bug!
 										}
 									}
+									
+									if (!cueStructureObject.isTimeDependent && depth === 0) {
+										cueStructureObject.processedCue = compositeHTML;
+									}
+								
+									return compositeHTML;
+								} else {
+									return cueStructureObject.processedCue;
 								}
-							
-								if (!cueStructureObject.isTimeDependent && depth === 0) {
-									cueStructureObject.processedCue = compositeHTML;
-								}
-							
-								return compositeHTML;
-							} else {
-								return cueStructureObject.processedCue;
-							}
-						};
-						return processLayer(this,0);
-					} else {
-						return cueSource;
-					}
+							};
+							return processLayer(this,0);
+						} else {
+							return cueSource;
+						}
+					};
 				};
-			};
-			captionator.CaptionatorCueStructure.prototype = [];
-		
-			// if requested by options, export the object types
-			if (options.exportObjects) {
-				window.TextTrack = captionator.TextTrack;
-				window.TextTrackCueList = captionator.TextTrackCueList;
-				window.ActiveTextTrackCueList = captionator.ActiveTextTrackCueList;
-				window.TextTrackCue = captionator.TextTrackCue;
-				window.MediaTrack = captionator.MediaTrack;
+				captionator.CaptionatorCueStructure.prototype = [];
+			
+				// if requested by options, export the object types
+				if (options.exportObjects) {
+					window.TextTrack = captionator.TextTrack;
+					window.TextTrackCueList = captionator.TextTrackCueList;
+					window.ActiveTextTrackCueList = captionator.ActiveTextTrackCueList;
+					window.TextTrackCue = captionator.TextTrackCue;
+					window.MediaTrack = captionator.MediaTrack;
+				}
+
+				// Next time captionator.captionify() is called, the objects are already available to us.
+				objectsCreated = true;
 			}
 		
 			[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
@@ -1089,7 +1096,7 @@
 					compositeActiveCues = compositeActiveCues.concat(cueSortArray);
 				}
 			});
-		
+
 			// Determine whether cues have changed - we generate an ID based on track ID, cue ID, and text length
 			activeCueIDs = compositeActiveCues.map(function(cue) {return cue.track.id + "." + cue.id + ":" + cue.text.toString(currentTime).length;});
 			cuesChanged = !captionator.compareArray(activeCueIDs,videoElement._captionator_previousActiveCues);
