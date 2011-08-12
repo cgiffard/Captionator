@@ -67,7 +67,7 @@ var generateMediaControls = function(videoElement) {
 						},false);
 						
 						currentTrack.onload = function(eventData) {
-							readyStateTD.innerHTML = ["Not Loaded","Loading","Loaded","Error"][this.readyState];
+							readyStateTD.innerHTML = ["Not Loaded","Loading","Loaded","Error"][currentTrack.readyState];
 							modeTD.innerHTML = ["Not Showing","Hidden","Showing"][currentTrack.mode];
 						};
 						currentTrack.onerror = currentTrack.onload;
