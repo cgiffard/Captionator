@@ -1427,12 +1427,12 @@
 				} else {
 					cueWidth = videoMetrics.width * (cueSize/100);
 				}
-				
+
 				if (cueObject.textPosition === "auto") {
 					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 				} else {
 					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
-					cueX = ((videoMetrics.right - cueWidth) * (cueObject.textPosition/100)) + videoMetrics.left;
+					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (cueObject.textPosition/100)) + videoElement._captionator_availableCueArea.left;
 				}
 				
 				if (cueObject.snapToLines === true) {
