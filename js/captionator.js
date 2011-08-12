@@ -293,7 +293,7 @@
 						if (cue && cue instanceof captionator.TextTrackCue) {
 							this.cues.addCue(cue);
 						} else {
-							throw Error("The argument is null or not an instance of TextTrackCue.");
+							throw new Error("The argument is null or not an instance of TextTrackCue.");
 						}
 					};
 				
@@ -342,10 +342,10 @@
 								// TODO: Sort cue list based on TextTrackCue.startTime.
 								Array.prototype.push.call(this,cue);
 							} else {
-								throw Error("This cue is associated with a different track!");
+								throw new Error("This cue is associated with a different track!");
 							}
 						} else {
-							throw Error("The argument is null or not an instance of TextTrackCue.");
+							throw new Error("The argument is null or not an instance of TextTrackCue.");
 						}
 					};
 				
