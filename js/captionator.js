@@ -148,7 +148,7 @@
 				return false;
 			} else {
 				// Browser supports native track API
-				if (typeof(document.createElement("video").addTrack) === "function") {
+				if (typeof(document.createElement("video").addTextTrack) === "function") {
 					return false;
 				}
 			}
@@ -794,7 +794,7 @@
 			}
 		
 			[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
-				videoElement.addTrack = function(id,kind,label,language,src,type,isDefault) {
+				videoElement.addTextTrack = function(id,kind,label,language,src,type,isDefault) {
 					var allowedKinds = ["subtitles","captions","descriptions","captions","metadata", // WHATWG SPEC
 										"karaoke","lyrics","tickertext", // CAPTIONATOR TEXT EXTENSIONS
 										"audiodescription","commentary", // CAPTIONATOR AUDIO EXTENSIONS
@@ -918,7 +918,7 @@
 						sources = trackElement.getAttribute("src");
 					}
 				
-					var trackObject = videoElement.addTrack(
+					var trackObject = videoElement.addTextTrack(
 											(trackElement.getAttribute("id")||captionator.generateID()),
 											trackElement.getAttribute("kind"),
 											trackElement.getAttribute("label"),
