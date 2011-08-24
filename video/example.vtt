@@ -1,12 +1,5 @@
 WEBVTT
 
-DEFAULTS --> S:20%
-
-STYLE -->
-::cue.stuff + othershit: blah {
-	documentblah: blah;
-}
-
 00:11.000 --> 00:13.000
 <v Roger Bingham>We are in New York City
 

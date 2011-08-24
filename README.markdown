@@ -3,20 +3,24 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5. Just 7KB when gzipped!**
 
-**Implements WHATWG TimedTextTrack Specification, and supports WebVTT, (as well as WebVTT v2 proposed features) SRT, SBV, SUB... LRC and TTML/DFXP coming soon! Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
+What does Captionator do?
+_________________________
 
-**This is the `CaptionCrunch` build - a bleeding edge development branch with all the fruit - but which might not always work. Be warned! More info further down the page.**
+* Implements the WHATWG `TimedTextTrack` Specification, complete with the full JavaScript API
+* Supports the `<track>` element
+* Supports 100% of WebVTT, along with WebVTT v2 proposed features
+* Additional support for SRT, SBV, and SUB caption/subtitle formats
+* Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!
+* Small, configurable, and under active development
+* Library independent
+* Accessible, with ARIA support
 
-This basic polyfill aims to add support for the HTML5 video `<track>` element.
+You can see a demo of Captionator here: http://captionatorjs.com/demo.html
 
-It currently includes rudimentary support for multiple language subtitle tracks,
-auto-selected based on the user-agent language and implements the draft WHATWG
-track API.
+**NOTE: This is the `CaptionCrunch` build - a bleeding edge development branch with all the fruit - but which might not always work. Be warned! More info further down the page.**
 
-It is designed to be js-library independent (but I might port it to jQuery later,
-as the raw DOM is chunky indeed.) It currently works in browsers which offer support
-for HTML5 video, and relies on some JavaScript (ECMAScript 5) features you won't
-find in older browsers (but they don't support HTML5 video anyway.)
+Using Captionator
+_________________________
 
 After including the library, adding captions to your video is pretty simple:
 
@@ -33,13 +37,6 @@ This will not only caption your video (this example will caption every element o
 the page with Timed Text Tracks available to it,) but it will also provide a `.tracks`
 property on your video element(s) - which you can use to dynamically manipulate the track
 data as per the WHATWG specification.
-
-It's also easy to generate a transcript once a video has been captioned if required:
-
-```javascript
-var track = document.getElementById("myVideo").tracks[0];
-track.generateTranscript("#divForTranscript"); // Doesn't *have* to be a div, of course!
-```
 
 If you've got specific requirements about which videos get captioned, and in what
 language(s), there are some extra options:
@@ -148,7 +145,8 @@ captionator.rebuildCaptions(myVideo);
 
 For a more advanced example, see the subtitle selector in the example file.
 
-### Options ###
+Options
+---------------------------------
 
 The following lists options which you can pass to captionator:
 
@@ -185,14 +183,9 @@ This is a documentation category in and of itself, so I've moved it to [MediaTra
 New Features
 ---------------
 
-* Support for `aria-describedby`, `aria-live`, and `aria-atomic`
-* Now implements the WHATWG draft [Timed Text Track specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html), which is far more up to date and better documented.
-* 100% WebVTT support, with support for proposed WebVTT 2 features!
-* Through the spec, supports dynamic subtitle manipulation (as demonstrated in the example file)
-* Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
-* Adaptively scales default subtitle UI to fit video (now even when the window resizes!)
-* Supports `MediaTrack` tracks, with additional audio & video, picture in picture etc.
-* Supports synchronised media with the `syncMaster` attribute!
+* Supports WebVTT proposed features such as `DEFAULTS`, `STYLE`, and `COMMENT` cues
+* Optional auto cue sizing algorithm, which sizes the cue to the text bounding box
+* Brand new WebVTT renderer, with new styling options!
 
 CaptionCrunch
 ----------------
@@ -205,9 +198,14 @@ Feel free to submit patches and help get this thing over the line!
 * [CaptionCrunch issue list](https://github.com/cgiffard/Captionator/issues?sort=created&direction=desc&state=open&page=1&milestone=2)
 * [CaptionCrunch branch @ github](https://github.com/cgiffard/Captionator/tree/captioncrunch)
 
+Thanks
+----------------
+Thanks to @silviapfeiffer for her knowledge and assistance with some of the hairier aspects of these specifications! Thanks also to @ourmaninjapan for his original implementation, jscaptions, and assistance with Japanese text/line breaking algorithms!
+
+
 Licence
 ----------------
 
 You may copy and use this library as you see fit (including commercial use) and modify it, as long as you retain my attribution comment (which includes my name, link to this github page, and library version) at the top of the script. You may not, under any circumstances, claim you wrote this library, or remove my attribution. (Fair's fair!)
 
-I'd appreciate it if you'd contribute patches back, but you don't have to.
+I'd appreciate it if you'd contribute patches back, but you don't have to. If you do, I'll be happy to credit your conrtibutions!
