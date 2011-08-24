@@ -197,6 +197,7 @@ New Features
 * Supports WebVTT proposed features such as `DEFAULTS`, `STYLE`, and `COMMENT` cues
 * Optional auto cue sizing algorithm, which sizes the cue to the text bounding box
 * Brand new WebVTT renderer, with new styling options!
+* Performs automatic validation of WebVTT cue spans and HTML!
 
 Thanks
 ----------------

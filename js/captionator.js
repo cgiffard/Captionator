@@ -1,5 +1,7 @@
 /* 
-	Captionator 0.5b [CaptionCrunch]
+	@licence
+
+	Captionator 0.5 [CaptionCrunch]
 	Christopher Giffard, 2011
 	Share and enjoy
 
