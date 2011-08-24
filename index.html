@@ -6,20 +6,20 @@
 		<link rel="stylesheet" type="text/css" media="screen" href="css/captions.css"/>
 	</head>
 	<body>
-		
-		<!-- IMPORTANT NOTE: This is a development build, and the code could be somewhat messy. Look at the stable branch for better use examples. -->
 		<h1>HTML5 Video Closed Captioning Example</h1>
-		<video controls autobuffer autoplay loop id="videoTest" width="100%">
+		<video controls autobuffer id="videoTest" width="1010" height="464">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
 
+			<!-- Subtitles for this video -->
+			<track kind="subtitles" src="video/arduino-en.vtt" type="text/vtt" srclang="en" label="English Subtitles" />
+			<track kind="subtitles" src="video/arduino-de.vtt" type="text/vtt" srclang="de" label="German Subtitles" />
+			<track kind="subtitles" src="video/arduino-ja.vtt" type="text/vtt" srclang="ja" label="Japanese Subtitles" />
+
+			<!-- WebVTT Testing & Examples -->
 			<track kind="captions" src="video/acid.vtt" type="text/vtt" srclang="en" label="WebVTT Acid Test" />
 			<track kind="captions" src="video/example.vtt" type="text/vtt" srclang="en" label="WHATWG's WebVTT Example" default />
-			<track kind="captions" src="video/leanback-example-en.vtt" type="text/vtt" srclang="en" label="LeanBack Example EN" />
-			<track kind="captions" src="video/arduino-en.vtt" type="text/vtt" srclang="en" label="English Subtitles" />
-			<track kind="captions" src="video/arduino-de.vtt" type="text/vtt" srclang="de" label="German Subtitles" />
-			<track kind="captions" src="video/arduino-ja.vtt" type="text/vtt" srclang="ja" label="Japanese Subtitles" />
 		</video>
 		<p><a href="index.html?debug">WebVTT renderer debug mode</a> | <a href="index.html?boundingBox">Size cues by text bounding box</a></p>
 		<h2>Media Controls</h2>
@@ -27,7 +27,7 @@
 		<!-- Include Captionator -->
 		<script type="text/javascript" src="js/captionator.js"></script>
 		
-		<!-- example usage -->
+		<!-- Example Usage -->
 		<script type="text/javascript" src="js/captionator-example-api.js"></script>
 		<script type="text/javascript">
 			window.addEventListener("load",function() {

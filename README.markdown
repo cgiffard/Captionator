@@ -14,10 +14,21 @@ _________________________
 * Small, configurable, and under active development
 * Library independent
 * Accessible, with ARIA support
+* Minimal footprint (written with a closure)
+
+What can I do with Captionator?
+--------------------------
+
+* Add subtitles to make foreign-language video content available to your audience
+* Add captions for the hard of hearing
+* Add descriptions for the blind or vision impaired
+* Add time-sensitive thumbnails to your custom video seek bar using `metadata` tracks
+* Display realtime tweets or timed comments on top of your video, like soundcloud
+* Fancy chapter based navigation with the `chapters` track type
+* Overlay lyrics, interview supers, or explanatory text on your videos
+* ...and much, much more!
 
 You can see a demo of Captionator here: http://captionatorjs.com/demo.html
-
-**NOTE: This is the `CaptionCrunch` build - a bleeding edge development branch with all the fruit - but which might not always work. Be warned! More info further down the page.**
 
 Using Captionator
 _________________________
@@ -60,8 +71,6 @@ captionator.captionify(["#yourVideoElement1","#yourVideoElement2"],"de",{ render
 Multiple subtitles and custom render functions
 ---------------------------------
 
-**Specifying a custom renderer**
-
 It's pretty straightforward to manage multiple enabled subtitle tracks. Take this set of track elements
 for example:
 
@@ -74,6 +83,8 @@ for example:
 In this case, the English subtitles are enabled by default. Unless you specify a custom renderer,
 Captionator will automatically generate as many separate containers as are required for enabled tracks, set up
 the relevant events and styles.
+
+**Specifying a custom renderer**
 
 Should you wish to specify your own renderer, you can use the following syntax when calling `captionator.captionify`:
 
@@ -129,9 +140,9 @@ var thirdTrackLanguage = myVideo.tracks[2].language;
 To enable or disable a track:
 
 ```javascript
-myVideo.tracks[2].mode = captionator.TextTrack.SHOWING;
-myVideo.tracks[2].mode = captionator.TextTrack.HIDDEN;
-myVideo.tracks[2].mode = captionator.TextTrack.OFF;
+myVideo.tracks[2].mode = captionator.TextTrack.SHOWING; // Equivalent to (integer) 2
+myVideo.tracks[2].mode = captionator.TextTrack.HIDDEN; // Equivalent to (integer) 1
+myVideo.tracks[2].mode = captionator.TextTrack.OFF; // Equivalent to (integer) 0
 ```
 
 The track is then enabled/disabled when the video fires a `timeupdate` event, or when a track mode changes.
@@ -187,20 +198,9 @@ New Features
 * Optional auto cue sizing algorithm, which sizes the cue to the text bounding box
 * Brand new WebVTT renderer, with new styling options!
 
-CaptionCrunch
-----------------
-**CaptionCrunch** is the development branch for Captionator 0.5. CaptionCrunch will support the latest changes to the TimedTextTrack JS API, and integrate whatever possible from the assistive media components of the specification.
-
-The most important part of the release is complete WebVTT support, with a compliant renderer respecting WebVTT cue settings and render options, not just the capacity to parse WebVTT.
-
-Feel free to submit patches and help get this thing over the line!
-
-* [CaptionCrunch issue list](https://github.com/cgiffard/Captionator/issues?sort=created&direction=desc&state=open&page=1&milestone=2)
-* [CaptionCrunch branch @ github](https://github.com/cgiffard/Captionator/tree/captioncrunch)
-
 Thanks
 ----------------
-Thanks to @silviapfeiffer for her knowledge and assistance with some of the hairier aspects of these specifications! Thanks also to @ourmaninjapan for his original implementation, jscaptions, and assistance with Japanese text/line breaking algorithms!
+Thanks to @silviapfeiffer for her knowledge and assistance with some of the hairier aspects of these specifications! Thanks also to @ourmaninjapan for his welcome assistance with Japanese text/line breaking algorithms!
 
 
 Licence
