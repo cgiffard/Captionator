@@ -1,8 +1,8 @@
 TODO
 ----
 
-* **DONE!** <strike>API Reference Docs</strike>
 * Fix BCP-47 language string parsing
+* **DONE!** <strike>API Reference Docs</strike>
 * **DONE!** <strike>Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)</strike>
 * **DONE!** <strike>Test with proper WebVTT files & confirm support for them</strike>
 * Add (option to prepend) timestamps to generated transcript
@@ -14,14 +14,14 @@ TODO
 * **DONE!** Positional collision detection for subtitles, preventing overlaps. How this should be implemented is a bit of a debate.
 * **DONE!** <strike>Enable use of external renderer</strike>
 * Fix `oncuechange` event firing
-* Implement `addCue` and `removeCue` events _properly_ for TextTrack objects
+* **50% - `addCue` complete** Implement <strike>`addCue`</strike> and `removeCue` events _properly_ for TextTrack objects
 
 ## Big Stuff ##
 
-* **99%** WebVTT Support!
+* Implement animation options
+* **99%** WebVTT Support! (Just compatibility checking to do now!)
 * **DONE!** <strike>Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).</strike>
 * **DONE!** Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
-* Implement animation options
 * **80%** Support audio and video tracks too (!!!)
 	* Enable use of verbose `<source>` type markup (could be hard.)
 * Include QUnit test framework & tests file

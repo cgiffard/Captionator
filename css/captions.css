@@ -28,3 +28,8 @@ q.voice:before {
 q.voice:after {
 	content: "";
 }
+
+.vtt_small {
+	font-size: 8pt !important;
+	line-height: 1 !important;
+}

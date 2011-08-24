@@ -1,6 +1,6 @@
 # Video and Audio tracks (MediaTrack) #
 
-**NOTE: THIS IS SUBJECT TO CHANGE.**
+**PLEASE NOTE:** The WHATWG now has a specification for Media Tracks, which is separated out into `audioTrack` and `videoTrack` categories. For now, this functionality remains in Captionator, but it will change. **I would advise you to avoid using it for now.**
 
 Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
 

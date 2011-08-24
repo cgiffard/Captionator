@@ -141,7 +141,7 @@
 			if (options.cueBackgroundColour && options.cueBackgroundColour instanceof Array) {
 				cueBackgroundColour = options.cueBackgroundColour;
 			}
-		
+			
 			/* Feature detection block */
 			if (!HTMLVideoElement) {
 				// Browser doesn't support HTML5 video - die here.
@@ -445,7 +445,7 @@
 				
 					// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
 					// be interpreted as a percentage of the video, as defined by the writing direction.
-					this.size = 100;
+					this.size = 0;
 				
 					// An alignment for the text of each line of the cue, either start alignment (the text is aligned towards its
 					// start side), middle alignment (the text is aligned centered between its start and end sides), end alignment
@@ -1041,6 +1041,11 @@
 				
 					captionator.synchroniseMediaElements(videoElement);
 				}, false);
+
+				window.addEventListener("resize", function(eventData) {
+					videoElement._captionator_dirtyBit = true; // mark video as dirty, force captionator to rerender captions
+					captionator.rebuildCaptions(videoElement);
+				},false);
 			
 				videoElement.addEventListener("play", function(eventData){
 					captionator.synchroniseMediaElements(videoElement);	
@@ -1102,7 +1107,10 @@
 			cuesChanged = !captionator.compareArray(activeCueIDs,videoElement._captionator_previousActiveCues);
 		
 			// If they've changed, we re-render our cue canvas.
-			if (cuesChanged) {
+			if (cuesChanged || videoElement._captionator_dirtyBit) {
+				// If dirty bit was set, it certainly isn't now.
+				videoElement._captionator_dirtyBit = false;
+
 				// Destroy internal tracking variable (which is used for caption rendering)
 				videoElement._captionator_availableCueArea = null;
 				
@@ -1316,6 +1324,7 @@
 			var characterX, characterY, characterPosition = 0;
 			var options = videoElement._captionatorOptions || {};
 			var videoMetrics;
+			var maxCueSize = 100, internalTextPosition = 50, textBoundingBoxWidth = 0, textBoundingBoxPercentage = 0, autoSize = true;
 			
 			// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 			// (sadly, all the good ones!)
@@ -1362,7 +1371,7 @@
 				
 				return characterCount;
 			};
-			
+
 			// Set up the cue canvas
 			videoMetrics = captionator.getNodeMetrics(videoElement);
 			
@@ -1383,7 +1392,22 @@
 					"width": videoMetrics.width
 				};
 			}
-			
+
+			if (cueObject.direction === "horizontal") {
+				// Calculate text bounding box
+				// (isn't useful for vertical cues, because we're doing all glyph positioning ourselves.)
+				captionator.applyStyles(DOMNode,{
+					"width": "auto",
+					"position": "static",
+					"display": "inline-block",
+					"padding": "1em"
+				});
+
+				textBoundingBoxWidth = parseInt(DOMNode.offsetWidth,10);
+				textBoundingBoxPercentage = Math.floor((textBoundingBoxWidth / videoElement._captionator_availableCueArea.width) * 100);
+				textBoundingBoxPercentage = textBoundingBoxPercentage <= 100 ? textBoundingBoxPercentage : 100;
+			}
+
 			// Calculate font metrics
 			baseFontSize = ((videoMetrics.height * (fontSizeVerticalPercentage/100))/96)*72;
 			baseFontSize = baseFontSize >= minimumFontSize ? baseFontSize : minimumFontSize;
@@ -1407,8 +1431,21 @@
 			videoWidthInLines = Math.floor(videoElement._captionator_availableCueArea.width / verticalPixelLineHeight);
 			
 			// Calculate cue size and padding
-			cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""));
-			cueSize = cueSize <= 100 ? cueSize : 100;
+			if (parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,"")) === 0) {
+				// We assume (given a size of 0) that no explicit size was set.
+				// Depending on settings, we either use the WebVTT default size of 100% (the Captionator.js default behaviour),
+				// or the proportion of the video the text bounding box takes up (widthwise) as a percentage (proposed behaviour, LeanBack's default)
+				if (options.sizeCuesByTextBoundingBox === true) {
+					cueSize = textBoundingBoxPercentage;
+				} else {
+					cueSize = 100;
+				}
+			} else {
+				autoSize = false;
+				cueSize = parseFloat(String(cueObject.size).replace(/[^\d\.]/ig,""));
+				cueSize = cueSize <= 100 ? cueSize : 100;
+			}
+			
 			cuePaddingLR = cueObject.direction === "horizontal" ? Math.floor(videoMetrics.width * 0.01) : 0;
 			cuePaddingTB = cueObject.direction === "horizontal" ? 0 : Math.floor(videoMetrics.height * 0.01);
 			
@@ -1421,7 +1458,18 @@
 			
 			if (cueObject.direction === "horizontal") {
 				cueHeight = pixelLineHeight;
-				
+
+				if (cueObject.textPosition !== "auto" && autoSize) {
+					internalTextPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
+					
+					// Don't squish the text
+					if (cueSize - internalTextPosition > textBoundingBoxPercentage) {
+						cueSize -= internalTextPosition;
+					} else {
+						cueSize = textBoundingBoxPercentage;
+					}
+				}
+
 				if (cueObject.snapToLines === true) {
 					cueWidth = videoElement._captionator_availableCueArea.width * (cueSize/100);
 				} else {
@@ -1431,8 +1479,8 @@
 				if (cueObject.textPosition === "auto") {
 					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 				} else {
-					cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
-					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (cueObject.textPosition/100)) + videoElement._captionator_availableCueArea.left;
+					internalTextPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
+					cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (internalTextPosition/100)) + videoElement._captionator_availableCueArea.left;
 				}
 				
 				if (cueObject.snapToLines === true) {
@@ -1523,7 +1571,7 @@
 					cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
 				}
 			}
-			
+
 			captionator.applyStyles(DOMNode,{
 				"position": "absolute",
 				"overflow": "hidden",
@@ -1542,7 +1590,7 @@
 			if (cueObject.direction === "vertical" || cueObject.direction === "vertical-lr") {
 				// Work out how to shrink the available render area
 				// If subtracting from the right works out to a larger area, subtract from the right.
-				// Otherwise, subtract from the left.
+				// Otherwise, subtract from the left.	
 				if (((cueX - videoElement._captionator_availableCueArea.left) - videoElement._captionator_availableCueArea.left) >=
 					(videoElement._captionator_availableCueArea.right - (cueX + cueWidth))) {
 					
@@ -1569,10 +1617,12 @@
 						cueY = cueY - (upwardAjustmentInLines*pixelLineHeight);
 						DOMNode.style.top = cueY + "px";
 					} else {
-						// BUGGY ...?
+						// Not working by lines, so instead of shifting up, simply throw out old cueY calculation
+						// and completely recalculate its value
 						var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
-						cueHeight = (DOMNode.scrollHeight + (videoMetrics.height*0.01));
-						cueY -= upwardAjustment;
+						cueHeight = (DOMNode.scrollHeight + cuePaddingTB);
+						var tmpHeightExclusions = videoMetrics.controlHeight + cueHeight + (cuePaddingTB*2);
+						cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
 						
 						DOMNode.style.height = cueHeight + "px";
 						DOMNode.style.top = cueY + "px";
@@ -1583,11 +1633,14 @@
 				// If subtracting from the bottom works out to a larger area, subtract from the bottom.
 				// Otherwise, subtract from the top.
 				if (((cueY - videoElement._captionator_availableCueArea.top) - videoElement._captionator_availableCueArea.top) >=
-					(videoElement._captionator_availableCueArea.bottom - (cueY + cueHeight))) {
+					(videoElement._captionator_availableCueArea.bottom - (cueY + cueHeight)) &&
+					videoElement._captionator_availableCueArea.bottom > cueY) {
 					
 					videoElement._captionator_availableCueArea.bottom = cueY;
 				} else {
-					videoElement._captionator_availableCueArea.top = cueY + cueHeight;
+					if (videoElement._captionator_availableCueArea.top < cueY + cueHeight) {
+						videoElement._captionator_availableCueArea.top = cueY + cueHeight;
+					}
 				}
 				
 				videoElement._captionator_availableCueArea.height =
@@ -1830,7 +1883,8 @@
 			// Be liberal in what you accept from others...
 			options = options instanceof Object ? options : {};
 			var fileType = "", subtitles = [];
-			var cueStyles;
+			var cueStyles = "";
+			var cueDefaults = [];
 		
 			// Set up timestamp parsers - SRT does WebVTT timestamps as well.
 			var SUBTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
@@ -1839,9 +1893,9 @@
 			var SRTChunkTimestampParser		= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
 			var GoogleTimestampParser		= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
 			var LRCTimestampParser			= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
-			var WebVTTDEFAULTSCueParser		= /^DEFAULT(S)?\s+\-\-\>\s+(.*)/;
-			var WebVTTSTYLECueParser		= /^STYLE(S)?\s+\-\-\>\s+(.*)/;
-			var WebVTTCOMMENTCueParser		= /^COMMENT(S)?\s+\-\-\>\s+(.*)/;
+			var WebVTTDEFAULTSCueParser		= /^(DEFAULTS|DEFAULT)\s+\-\-\>\s+(.*)/g;
+			var WebVTTSTYLECueParser		= /^(STYLE|STYLES)\s+\-\-\>\s*\n([\s\S]*)/g;
+			var WebVTTCOMMENTCueParser		= /^(COMMENT|COMMENTS)\s+\-\-\>\s+(.*)/g;
 
 			if (captionData) {
 				// This function parses and validates cue HTML/VTT tokens, and converts them into something understandable to the renderer.
@@ -1936,6 +1990,10 @@
 													.replace(/</g,"&lt;")
 													.replace(/>/g,"&gt;")
 													.replace(/\&/g,"&amp;");
+									
+									if (!options.ignoreWhitespace) {
+										currentToken = currentToken.replace(/\n+/g,"<br />");
+									}
 								}
 							
 								currentContext.push(currentToken);
@@ -1948,19 +2006,21 @@
 				
 				// This function takes chunks of text representing cues, and converts them into cue objects.
 				var parseCaptionChunk = function parseCaptionChunk(subtitleElement,objectCount) {
-					var subtitleParts, timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings, id, specialCueData;
+					var subtitleParts, timeIn, timeOut, html, timeData, subtitlePartIndex, cueSettings = "", id, specialCueData;
 					var timestampMatch, tmpCue;
 
 					// WebVTT Special Cue Logic
-					if ((specialCueData = WebVTTDEFAULTSCueParser.exec(subtitleElement)) || 
-						(specialCueData = WebVTTSTYLECueParser.exec(subtitleElement)) ||
-						(specialCueData = WebVTTCOMMENTCueParser.exec(subtitleElement))) {
-						
-						// Code to proces these special cues will goe here soon
-
+					if ((specialCueData = WebVTTDEFAULTSCueParser.exec(subtitleElement))) {
+						cueDefaults = specialCueData.slice(2).join("");
+						cueDefaults = cueDefaults.split(/\s+/g).filter(function(def) { return def && !!def.length });
 						return null;
+					} else if ((specialCueData = WebVTTSTYLECueParser.exec(subtitleElement))) {
+						cueStyles += specialCueData[specialCueData.length-1];
+						return null;
+					} else if ((specialCueData = WebVTTCOMMENTCueParser.exec(subtitleElement))) {
+						return null; // At this stage, we don't want to do anything with these.
 					}
-				
+					
 					if (fileType === "LRC") {
 						subtitleParts = [
 							subtitleElement.substr(0,subtitleElement.indexOf("]")),
@@ -1975,7 +2035,7 @@
 						subtitleParts.shift();
 					}
 				
-					if (subtitleParts[0].match(/^\s*\d+\s*$/ig)) {
+					if (subtitleParts[0].match(/^\s*[a-z0-9]+\s*$/ig)) {
 						// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
 						id = String(subtitleParts.shift().replace(/\s*/ig,""));
 					} else {
@@ -2012,16 +2072,15 @@
 							
 							// Google's proposed WebVTT timestamp style
 							timeData = timestampMatch.slice(1);
-						
+							
 							timeIn = parseFloat(timeData[0]);
 							timeOut = timeIn + parseFloat(timeData[1]);
 
 							if (timeData[2]) {
 								cueSettings = timeData[2];
 							}
-
 						}
-					
+						
 						// We've got the timestamp - return all the other unmatched lines as the raw subtitle data
 						subtitleParts = subtitleParts.slice(0,subtitlePartIndex).concat(subtitleParts.slice(subtitlePartIndex+1));
 						break;
@@ -2031,14 +2090,40 @@
 						// We didn't extract any time information. Assume the cue is invalid!
 						return null;
 					}
-				
+
+					// Consolidate cue settings, convert defaults to object
+					var compositeCueSettings =
+						cueDefaults
+							.reduce(function(previous,current,index,array){
+								previous[current.split(":")[0]] = current.split(":")[1];
+								return previous;
+							},{});
+					
+					// Loop through cue settings, replace defaults with cue specific settings if they exist
+					var compositeCueSettings =
+						cueSettings
+							.split(/\s+/g)
+							.filter(function(set) { return set && !!set.length })
+							// Convert array to a key/val object
+							.reduce(function(previous,current,index,array){
+								previous[current.split(":")[0]] = current.split(":")[1];
+								return previous;
+							},compositeCueSettings);
+					
+					// Turn back into string like the TextTrackCue constructor expects
+					cueSettings = "";
+					Object.keys(compositeCueSettings).forEach(function(key,index) {
+						cueSettings += !!cueSettings.length ? " " : "";
+						cueSettings += key + ":" + compositeCueSettings[key];
+					});
+					
 					// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
 					html = options.processCueHTML === false ? subtitleParts.join("\n") : processCaptionHTML(subtitleParts.join("\n"));
 					tmpCue = new captionator.TextTrackCue(id, timeIn, timeOut, html, cueSettings, false, null);
 					tmpCue.styleData = cueStyles;
 					return tmpCue;
 				};
-			
+				
 				// Begin parsing --------------------
 				subtitles = captionData
 								.replace(/\r\n/g,"\n")

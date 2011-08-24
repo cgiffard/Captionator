@@ -1,7 +1,7 @@
 Captionator
 ===========
 
-**Simple closed-captioning polyfill for HTML5. Just 5KB when gzipped!**
+**Simple closed-captioning polyfill for HTML5. Just 7KB when gzipped!**
 
 **Implements WHATWG TimedTextTrack Specification, and supports WebVTT, (as well as WebVTT v2 proposed features) SRT, SBV, SUB... LRC and TTML/DFXP coming soon! Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!**
 
@@ -158,6 +158,7 @@ The following lists options which you can pass to captionator:
 * `renderer` (Function) - sets an alternative renderer for captions & subtitles. You can utilise the WHATWG TimedTextTrack specification to manipulate or get information about the tracks themselves.
 * `processCueHTML` (Boolean) - determines whether HTML/WebVTT cue source is parsed. Defaults to true. If this is set to false, cue source will be retained as unprocessed text, and special WebVTT cue spans will be appended straight into the DOM (rather than perform their function as detailed in the WebVTT specification.) `metadata` tracks are never processed, regardless of the value of this setting.
 * `sanitiseCueHTML` (Boolean) - determines whether non-WebVTT-compliant tags are dropped when parsing, thereby sanitising the source of WebVTT cues. Defaults to true. Cue source is not sanitised when `processCueHTML` is set to false.
+* `ignoreWhitespace` (Boolean) - By default, line breaks (single) within cues are converted to <br /> elements in HTML. Set this to true to prevent whitespace from changing processing behaviour. By default, this is false.
 * `controlHeight` (Integer) - defines an 'exclusion zone' (where cues will not be rendered) at the bottom of the video to allow for video controls. The available area for cues is determined based on the height of the video less the height of the video controls. By default, if the `controls` attribute is present on the video element, this is calculated automatically based on the user agent. Should the `controls` attribute be missing, this value is zero. If you want to implement your own controls, use this to tell captionator how tall they are.
 * `debugMode` (Boolean) - If true, draws a canvas with debugging information for cue positioning on top (in z-space) of the video. The canvas displays `vertical`, `vertical-lr`, and `horizontal` line divisions, as well as Captionator's own understanding of the available cue area (post cue-rendering.)
 * `appendCueCanvasTo` (HTMLElement | DOM Query as string) - Defines a node in the document within which Captionator should render the video cues. This function is intended to allow you to create a wrapper div and have Captionator render cues within it - hopefully easing the process of making a custom video player. If successful, and Captionator is able to find the wrapper node based on your input, it will set the `top` and `left` values of its own cue canvas to zero, rather than finding the offset position of the video element itself, and append its cue canvas within the wrapper when rendering. If the query fails, the cue canvas will be appended to the body as normal, and positioned using the offset position of the video element.
@@ -168,10 +169,13 @@ The following lists options which you can pass to captionator:
 * `fontSizeVerticalPercentage` (Float) - The cue font size as a percentage (0 - 100) of the height of a given captioned video. Defaults to 4.5%.
 * `lineHeightRatio` (Float) - The ratio of line height to font size. Defaults to 1.5.
 * `cueBackgroundColour` (Array) - An array containing four items, each for: red (R), green (G), blue (B), and alpha (A), in that order, which define the background colour of cues. Defaults to [0,0,0,0.5].
+* `sizeCuesByTextBoundingBox` (Boolean) - Instructs Captionator to set the cue size by the default bounding box of the text, rather than size them to 100% of the available rendering area (the WebVTT specification's method, and Captionator's default method.) False by default.
 
 
 Video and Audio tracks (MediaTrack)
 -----------------------------------
+
+**PLEASE NOTE:** The WHATWG now has a specification for Media Tracks, which is separated out into `audioTrack` and `videoTrack` categories. For now, this functionality remains in Captionator, but it will change. **I would advise you to avoid using it for now.**
 
 Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
 
@@ -183,9 +187,10 @@ New Features
 
 * Support for `aria-describedby`, `aria-live`, and `aria-atomic`
 * Now implements the WHATWG draft [Timed Text Track specification](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html), which is far more up to date and better documented.
+* 100% WebVTT support, with support for proposed WebVTT 2 features!
 * Through the spec, supports dynamic subtitle manipulation (as demonstrated in the example file)
 * Supports multiple (simultaneously playing) video files on a page, each with an unlimited number of tracks
-* Adaptively scales default subtitle UI to fit video
+* Adaptively scales default subtitle UI to fit video (now even when the window resizes!)
 * Supports `MediaTrack` tracks, with additional audio & video, picture in picture etc.
 * Supports synchronised media with the `syncMaster` attribute!
 
