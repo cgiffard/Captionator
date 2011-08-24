@@ -3,8 +3,9 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5. Just 7KB when gzipped!**
 
+
 What does Captionator do?
-_________________________
+-------------------------
 
 * Implements the WHATWG `TimedTextTrack` Specification, complete with the full JavaScript API
 * Supports the `<track>` element
@@ -14,7 +15,7 @@ _________________________
 * Small, configurable, and under active development
 * Library independent
 * Accessible, with ARIA support
-* Minimal footprint (written with a closure)
+* Minimal global namespace footprint (written with a closure)
 
 What can I do with Captionator?
 --------------------------
@@ -31,7 +32,7 @@ What can I do with Captionator?
 You can see a demo of Captionator here: http://captionatorjs.com/demo.html
 
 Using Captionator
-_________________________
+------------------
 
 After including the library, adding captions to your video is pretty simple:
 
