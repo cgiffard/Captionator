@@ -1,6 +1,4 @@
-/* 
-	@licence
-
+/*
 	Captionator 0.5 [CaptionCrunch]
 	Christopher Giffard, 2011
 	Share and enjoy
@@ -1320,7 +1318,7 @@
 		"styleCue": function(DOMNode, cueObject, videoElement) {
 			// Variables for maintaining render calculations
 			var cueX = 0, cueY = 0, cueWidth = 0, cueHeight = 0, cueSize, cueAlignment, cuePaddingLR = 0, cuePaddingTB = 0;
-			var baseFontSize, basePixelFontSize, baseLineHeight;
+			var baseFontSize, basePixelFontSize, baseLineHeight, tmpHeightExclusions;
 			var videoHeightInLines, videoWidthInLines, pixelLineHeight, verticalPixelLineHeight, charactersPerLine = 0, characterCount = 0;
 			var characters = 0, lineCount = 0, finalLineCharacterCount = 0, finalLineCharacterHeight = 0, currentLine = 0;
 			var characterX, characterY, characterPosition = 0;
@@ -1441,6 +1439,7 @@
 					cueSize = textBoundingBoxPercentage;
 				} else {
 					cueSize = 100;
+					autoSize = false;
 				}
 			} else {
 				autoSize = false;
@@ -1488,7 +1487,7 @@
 				if (cueObject.snapToLines === true) {
 					cueY = ((videoHeightInLines-1) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
 				} else {
-					var tmpHeightExclusions = videoMetrics.controlHeight + pixelLineHeight + (cuePaddingTB*2);
+					tmpHeightExclusions = videoMetrics.controlHeight + pixelLineHeight + (cuePaddingTB*2);
 					cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
 				}
 				
@@ -1623,7 +1622,7 @@
 						// and completely recalculate its value
 						var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
 						cueHeight = (DOMNode.scrollHeight + cuePaddingTB);
-						var tmpHeightExclusions = videoMetrics.controlHeight + cueHeight + (cuePaddingTB*2);
+						tmpHeightExclusions = videoMetrics.controlHeight + cueHeight + (cuePaddingTB*2);
 						cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
 						
 						DOMNode.style.height = cueHeight + "px";
@@ -2014,7 +2013,7 @@
 					// WebVTT Special Cue Logic
 					if ((specialCueData = WebVTTDEFAULTSCueParser.exec(subtitleElement))) {
 						cueDefaults = specialCueData.slice(2).join("");
-						cueDefaults = cueDefaults.split(/\s+/g).filter(function(def) { return def && !!def.length });
+						cueDefaults = cueDefaults.split(/\s+/g).filter(function(def) { return def && !!def.length; });
 						return null;
 					} else if ((specialCueData = WebVTTSTYLECueParser.exec(subtitleElement))) {
 						cueStyles += specialCueData[specialCueData.length-1];
@@ -2102,10 +2101,10 @@
 							},{});
 					
 					// Loop through cue settings, replace defaults with cue specific settings if they exist
-					var compositeCueSettings =
+					compositeCueSettings =
 						cueSettings
 							.split(/\s+/g)
-							.filter(function(set) { return set && !!set.length })
+							.filter(function(set) { return set && !!set.length; })
 							// Convert array to a key/val object
 							.reduce(function(previous,current,index,array){
 								previous[current.split(":")[0]] = current.split(":")[1];

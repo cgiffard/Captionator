@@ -1,7 +1,7 @@
 Captionator
 ===========
 
-**Simple closed-captioning polyfill for HTML5. Just 7KB when gzipped!**
+**Simple closed-captioning polyfill for HTML5. Just 8KB when gzipped!**
 
 What does Captionator do?
 _________________________
