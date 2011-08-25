@@ -130,6 +130,8 @@ Each track defines the following user accessible properties:
 * `kind` - Resource type (one of `subtitles`, `captions`, `chapters`, `descriptions`, `metadata`.)
 * `readyState` - indicates whether the resource is loaded (one of NONE/0, LOADING/1, LOADED/2, or ERROR/3)
 * `mode` - the most important property (probably!) - determines whether captionator will fetch and render the resource.
+* `cues` - A TextTrackCueList (functionally, an array) containing all the cues for the track
+* `activeCues` - A TextTrackCueList containing all the cues for the track which are currently active
 * `videoNode` - the HTMLVideoElement which the track relates to/extends. (Not in the WHATWG spec.)
 
 Ergo, to access the property `language` from the third track, you'd use the following code:
@@ -147,7 +149,7 @@ myVideo.tracks[2].mode = captionator.TextTrack.OFF; // Equivalent to (integer) 0
 ```
 
 The track is then enabled/disabled when the video fires a `timeupdate` event, or when a track mode changes.
-You can update it immediately like so:
+You can update it immediately (although Captionator handles this itself in nearly every case) like so:
 
 ```javascript
 captionator.rebuildCaptions(myVideo);
@@ -172,6 +174,7 @@ The following lists options which you can pass to captionator:
 * `controlHeight` (Integer) - defines an 'exclusion zone' (where cues will not be rendered) at the bottom of the video to allow for video controls. The available area for cues is determined based on the height of the video less the height of the video controls. By default, if the `controls` attribute is present on the video element, this is calculated automatically based on the user agent. Should the `controls` attribute be missing, this value is zero. If you want to implement your own controls, use this to tell captionator how tall they are.
 * `debugMode` (Boolean) - If true, draws a canvas with debugging information for cue positioning on top (in z-space) of the video. The canvas displays `vertical`, `vertical-lr`, and `horizontal` line divisions, as well as Captionator's own understanding of the available cue area (post cue-rendering.)
 * `appendCueCanvasTo` (HTMLElement | DOM Query as string) - Defines a node in the document within which Captionator should render the video cues. This function is intended to allow you to create a wrapper div and have Captionator render cues within it - hopefully easing the process of making a custom video player. If successful, and Captionator is able to find the wrapper node based on your input, it will set the `top` and `left` values of its own cue canvas to zero, rather than finding the offset position of the video element itself, and append its cue canvas within the wrapper when rendering. If the query fails, the cue canvas will be appended to the body as normal, and positioned using the offset position of the video element.
+* `enableHighResolution` (Boolean) - If true, Captionator sets up a 20ms timer for refreshing cues and captions, firing much more rapidly than the default `timeupdate` event listener on the video element. This option causes Captionator to use a lot more of the user's CPU time - only use this if you have a real need for quick, <250ms response times. This option defaults to false.
 
 #### Styling Options ####
 * `minimumFontSize` (Float) - Defines the minimum allowable font size with which Captionator will render cues (in points.) Defaults to 10pt.

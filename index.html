@@ -21,17 +21,21 @@
 			<track kind="captions" src="video/acid.vtt" type="text/vtt" srclang="en" label="WebVTT Acid Test" />
 			<track kind="captions" src="video/example.vtt" type="text/vtt" srclang="en" label="WHATWG's WebVTT Example" default />
 		</video>
-		<p><a href="index.html?debug">WebVTT renderer debug mode</a> | <a href="index.html?boundingBox">Size cues by text bounding box</a></p>
+		<p><a href="index.html?debug">WebVTT renderer debug mode</a> | <a href="index.html?boundingBox">Size cues by text bounding box</a> | <a href="index.html?highres">High Resolution Mode</a></p>
 		<h2>Media Controls</h2>
 
 		<!-- Include Captionator -->
-		<script type="text/javascript" src="js/captionator-min.js"></script>
+		<script type="text/javascript" src="js/captionator.js"></script>
 		
 		<!-- Example Usage -->
 		<script type="text/javascript" src="js/captionator-example-api.js"></script>
 		<script type="text/javascript">
 			window.addEventListener("load",function() {
-				captionator.captionify(null,null,{debugMode:!!window.location.search.match(/debug/i),sizeCuesByTextBoundingBox:!!window.location.search.match(/boundingBox/i)});
+				captionator.captionify(null,null,{
+					debugMode: !!window.location.search.match(/debug/i),
+					sizeCuesByTextBoundingBox: !!window.location.search.match(/boundingBox/i),
+					enableHighResolution: !!window.location.search.match(/highres/i),
+				});
 				
 				var videoObject = document.getElementsByTagName("video")[0];
 				videoObject.volume = 0;

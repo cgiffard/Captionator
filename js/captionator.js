@@ -190,22 +190,10 @@
 								if (this.readyState === captionator.TextTrack.NONE && this.src.length > 0 && value > captionator.TextTrack.OFF) {
 									this.loadTrack(this.src,null);
 								}
-							
-								if (this.readyState === captionator.TextTrack.LOADED) {
-									// make sure we are actually showing current captions
-									captionator.rebuildCaptions(this.videoNode);
-								}
-						
-								if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
-									// actually hide the captions
-									if (this.videoNode.containerObject) {
-										try {
-											// With the new WebVTT renderer, this is not good behaviour, and it's a wonder it still works.
-											// I'll be looking to fix this ASAP.
-											this.videoNode.containerObject.parentNode.removeChild(this.videoNode.containerObject);
-										} catch(Error) {}
-									}
-								}
+								
+								// Refresh all captions on video
+								this.videoNode._captionator_dirtyBit = true;
+								captionator.rebuildCaptions(this.videoNode);
 							
 								if (value === captionator.TextTrack.OFF) {
 									// make sure the resource is reloaded next time (Is this correct behaviour?)
@@ -1054,6 +1042,24 @@
 				videoElement.addEventListener("pause", function(eventData){
 					captionator.synchroniseMediaElements(videoElement);	
 				},false);
+
+				// Hires mode
+				if (options.enableHighResolution === true) {
+					window.setInterval(function captionatorHighResProcessor() {
+						try {
+							videoElement.tracks.forEach(function(track) {
+								track.activeCues.refreshCues.apply(track.activeCues);
+							});
+						} catch(error) {}
+					
+						// External renderer?
+						if (options.renderer instanceof Function) {
+							options.renderer.call(captionator,videoElement);
+						} else {
+							captionator.rebuildCaptions(videoElement);
+						}
+					},20);
+				}
 			}
 		
 			return videoElement;
