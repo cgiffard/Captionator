@@ -250,6 +250,8 @@
 										captionData = captionator.parseCaptions(ajaxObject.responseText,TrackProcessingOptions);
 										currentTrackElement.readyState = captionator.TextTrack.LOADED;
 										currentTrackElement.cues.loadCues(captionData);
+										currentTrackElement.activeCues.refreshCues.apply(currentTrackElement.activeCues);
+										currentTrackElement.videoNode._captionator_dirtyBit = true;
 										captionator.rebuildCaptions(currentTrackElement.videoNode);
 										currentTrackElement.onload.call(this);
 									
