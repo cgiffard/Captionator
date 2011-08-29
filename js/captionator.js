@@ -250,6 +250,8 @@
 										captionData = captionator.parseCaptions(ajaxObject.responseText,TrackProcessingOptions);
 										currentTrackElement.readyState = captionator.TextTrack.LOADED;
 										currentTrackElement.cues.loadCues(captionData);
+										currentTrackElement.activeCues.refreshCues.apply(currentTrackElement.activeCues);
+										currentTrackElement.videoNode._captionator_dirtyBit = true;
 										captionator.rebuildCaptions(currentTrackElement.videoNode);
 										currentTrackElement.onload.call(this);
 									
@@ -490,7 +492,7 @@
 					this.isActive = function() {
 						var currentTime = 0;
 						if (this.track instanceof captionator.TextTrack) {
-							if (this.track.mode === captionator.TextTrack.SHOWING && this.track.readyState === captionator.TextTrack.LOADED) {
+							if ((this.track.mode === captionator.TextTrack.SHOWING || this.track.mode === captionator.TextTrack.HIDDEN) && this.track.readyState === captionator.TextTrack.LOADED) {
 								try {
 									currentTime = this.track.videoNode.currentTime;
 									
@@ -783,7 +785,7 @@
 		
 			[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
 				videoElement.addTextTrack = function(id,kind,label,language,src,type,isDefault) {
-					var allowedKinds = ["subtitles","captions","descriptions","captions","metadata", // WHATWG SPEC
+					var allowedKinds = ["subtitles","captions","descriptions","captions","metadata","chapters", // WHATWG SPEC
 										"karaoke","lyrics","tickertext", // CAPTIONATOR TEXT EXTENSIONS
 										"audiodescription","commentary", // CAPTIONATOR AUDIO EXTENSIONS
 										"alternate","signlanguage"]; // CAPTIONATOR VIDEO EXTENSIONS
