@@ -1,5 +1,5 @@
 /*
-	Captionator 0.5 [CaptionCrunch]
+	Captionator 0.6 [CaptionPlanet]
 	Christopher Giffard, 2011
 	Share and enjoy
 
@@ -143,7 +143,9 @@
 			}
 			
 			/* Feature detection block */
-			if (!HTMLVideoElement) {
+			// VirtualMediaContainer is an element designed to provide a media interface to Captionator
+			// where the browser doesn't support native HTML5 video (it might wrap a flash movie, for example)
+			if (!HTMLVideoElement && !(element instanceof VirtualMediaContainer) ) {
 				// Browser doesn't support HTML5 video - die here.
 				return false;
 			} else {
@@ -537,168 +539,6 @@
 					this.onexit = function() {};
 				};
 			
-				//	Captionator media extensions
-				/**
-				 * @constructor
-				 */
-				captionator.MediaTrack = function MediaTrack(id,kind,label,language,src,type,isDefault) {
-					// This function is under construction!
-					// Eventually, the idea is that captionator will support timed video and audio tracks in addition to text subtitles
-					
-					var getSupportedMediaSource = function(sources) {
-						//	Thanks Mr Pilgrim! :)
-						var supportedSource = sources
-							.filter(function(source,index) {
-								try {
-									var mediaElement = document.createElement(source.getAttribute("type").split("/").shift());
-									return !!(mediaElement.canPlayType && mediaElement.canPlayType(source.getAttribute("type")).replace(/no/, ''));
-								} catch(Error) {
-									//	(The type fragment before the / probably didn't match to 'video' or 'audio'. So... we don't support it.)
-									return false;
-								}
-							})
-							.shift()
-							.getAttribute("src");
-				
-						return supportedSource;
-					};
-			
-					this.onload = function () {};
-					this.onerror = function() {};
-			
-					this.id = id || "";
-					this.internalMode = captionator.TextTrack.OFF;
-					this.internalMode = captionator.TextTrack.OFF;
-					this.mediaElement = null;
-					this.kind = kind || "audiodescription";
-					this.label = label || "";
-					this.language = language || "";
-					this.readyState = captionator.TextTrack.NONE;
-					this.type = type || "x/unknown"; //	MIME type
-					this.mediaType = null;
-					this.src = "";
-			
-					if (typeof(src) === "string") {
-						this.src = src;
-					} else if (src instanceof NodeList) {
-						this.src = getSupportedMediaSource(src);
-					}
-			
-					if (this.type.match(/^video\//)) {
-						this.mediaType = "video";
-					} else if (this.type.match(/^audio\//)) {
-						this.mediaType = "audio";
-					}
-			
-					//	Create getters and setters for mode
-					this.getMode = function() {
-						return this.internalMode;
-					};
-			
-					this.setMode = function(value) {
-						var allowedModes = [captionator.TextTrack.OFF,captionator.TextTrack.HIDDEN,captionator.TextTrack.SHOWING], containerID, container;
-						if (allowedModes.indexOf(value) !== -1) {
-							if (value !== this.internalMode) {
-								this.internalMode = value;
-								if (value === captionator.TextTrack.HIDDEN && !this.mediaElement) {
-									this.buildMediaElement();
-								}
-						
-								if (value === captionator.TextTrack.SHOWING) {
-									this.showMediaElement();
-								}
-						
-								if (value === captionator.TextTrack.OFF || value === captionator.TextTrack.HIDDEN) {
-									this.hideMediaElement();
-								}
-							}
-						} else {
-							throw new Error("Illegal mode value for track.");
-						}
-					};
-			
-					if (Object.prototype.__defineGetter__) {
-						this.__defineGetter__("mode", this.getMode);
-						this.__defineSetter__("mode", this.setMode);
-					} else if (Object.defineProperty) {
-						Object.defineProperty(this,"mode",
-							{get: this.getMode, set: this.setMode}
-						);
-					}
-			
-					this.hideMediaElement = function() {
-						if (this.mediaElement) {
-							if (!this.mediaElement.paused) {
-								this.mediaElement.pause();
-							}
-					
-							if (this.mediaElement instanceof HTMLVideoElement) {
-								this.mediaElement.style.display = "none";
-							}
-						}
-					};
-			
-					this.showMediaElement = function() {
-						if (!this.mediaElement) {
-							this.buildMediaElement();
-							document.body.appendChild(this.mediaElement);
-						} else {
-							if (!this.mediaElement.parentNode) {
-								document.body.appendChild(this.mediaElement);
-							}
-					
-							if (this.mediaElement instanceof HTMLVideoElement) {
-								this.mediaElement.style.display = "block";
-							}
-						}
-					};
-			
-					this.buildMediaElement = function() {
-						try {
-							if (this.type.match(/^video\//)) {
-								this.mediaElement = document.createElement("video");
-								this.mediaElement.className = "captionator-mediaElement-" + this.kind;
-								captionator.styleNode(this.mediaElement,this.kind,this.videoNode);
-						
-							} else if (this.type.match(/^audio\//)) {
-								this.mediaElement = new Audio();
-							}
-					
-							this.mediaElement.type = this.type;
-							this.mediaElement.src = this.src;
-							this.mediaElement.load();
-							this.mediaElement.trackObject = this;
-							this.readyState = captionator.TextTrack.LOADING;
-							var mediaElement = this.mediaElement;
-					
-							this.mediaElement.addEventListener("progress",function(eventData) {
-								mediaElement.trackObject.readyState = captionator.TextTrack.LOADING;
-							},false);
-					
-							this.mediaElement.addEventListener("canplaythrough",function(eventData) {
-								mediaElement.trackObject.readyState = captionator.TextTrack.LOADED;
-								mediaElement.trackObject.onload.call(mediaElement.trackObject);
-							},false);
-					
-							this.mediaElement.addEventListener("error",function(eventData) {
-								mediaElement.trackObject.readyState = captionator.TextTrack.ERROR;
-								mediaElement.trackObject.mode = captionator.TextTrack.OFF;
-								mediaElement.trackObject.mediaElement = null;
-								mediaElement.trackObject.onerror.call(mediaElement.trackObject,eventData);
-							},false);
-					
-						} catch(Error) {
-							this.readyState = captionator.TextTrack.ERROR;
-							this.mode = captionator.TextTrack.OFF;
-							this.mediaElement = null;
-
-							if (this.onerror) {
-								this.onerror.apply(this,Error);
-							}
-						}
-					};
-				};
-			
 				// Captionator internal cue structure object
 				/**
 				 * @constructor
@@ -776,65 +616,12 @@
 					window.TextTrackCueList = captionator.TextTrackCueList;
 					window.ActiveTextTrackCueList = captionator.ActiveTextTrackCueList;
 					window.TextTrackCue = captionator.TextTrackCue;
-					window.MediaTrack = captionator.MediaTrack;
 				}
 
 				// Next time captionator.captionify() is called, the objects are already available to us.
 				objectsCreated = true;
 			}
-		
-			[].slice.call(document.getElementsByTagName("video"),0).forEach(function(videoElement) {
-				videoElement.addTextTrack = function(id,kind,label,language,src,type,isDefault) {
-					var allowedKinds = ["subtitles","captions","descriptions","captions","metadata","chapters", // WHATWG SPEC
-										"karaoke","lyrics","tickertext", // CAPTIONATOR TEXT EXTENSIONS
-										"audiodescription","commentary", // CAPTIONATOR AUDIO EXTENSIONS
-										"alternate","signlanguage"]; // CAPTIONATOR VIDEO EXTENSIONS
-				
-					var textKinds = allowedKinds.slice(0,7);
-					var newTrack;
-					id = typeof(id) === "string" ? id : "";
-					label = typeof(label) === "string" ? label : "";
-					language = typeof(language) === "string" ? language : "";
-					isDefault = typeof(isDefault) === "boolean" ? isDefault : false; // Is this track set as the default?
 
-					// If the kind isn't known, throw DOM syntax error exception
-					if (!allowedKinds.filter(function (currentKind){
-							return kind === currentKind ? true : false;
-						}).length) {
-						throw captionator.createDOMException(12,"DOMException 12: SYNTAX_ERR: You must use a valid kind when creating a TimedTextTrack.","SYNTAX_ERR");
-					}
-
-					if (textKinds.filter(function (currentKind){
-							return kind === currentKind ? true : false;
-						}).length) {
-						newTrack = new captionator.TextTrack(id,kind,label,language,src,null);
-						if (newTrack) {
-							if (!(videoElement.tracks instanceof Array)) {
-								videoElement.tracks = [];
-							}
-
-							videoElement.tracks.push(newTrack);
-							return newTrack;
-						} else {
-							return false;
-						}
-					} else {
-						newTrack = new captionator.MediaTrack(id,kind,label,language,src,type,isDefault);
-						if (newTrack) {
-							if (!(videoElement.mediaTracks instanceof Array)) {
-								videoElement.mediaTracks = [];
-							}
-
-							videoElement.mediaTracks.push(newTrack);
-							return newTrack;
-						} else {
-							return false;
-						}
-					}
-				};
-			});
-		
-		
 			if (!element || element === false || element === undefined || element === null) {
 				videoElements = [].slice.call(document.getElementsByTagName("video"),0); // select and convert to array
 			} else {
@@ -854,9 +641,41 @@
 			}
 		
 			if (videoElements.length) {
-				for (elementIndex = 0; elementIndex < videoElements.length; elementIndex ++) {
+				videoElements.forEach(function(videoElement) {
+					videoElement.addTextTrack = function(id,kind,label,language,src,type,isDefault) {
+						var allowedKinds = ["subtitles","captions","descriptions","captions","metadata","chapters"]; // WHATWG SPEC
+					
+						var textKinds = allowedKinds.slice(0,7);
+						var newTrack;
+						id = typeof(id) === "string" ? id : "";
+						label = typeof(label) === "string" ? label : "";
+						language = typeof(language) === "string" ? language : "";
+						isDefault = typeof(isDefault) === "boolean" ? isDefault : false; // Is this track set as the default?
+
+						// If the kind isn't known, throw DOM syntax error exception
+						if (!allowedKinds.filter(function (currentKind){
+								return kind === currentKind ? true : false;
+							}).length) {
+							throw captionator.createDOMException(12,"DOMException 12: SYNTAX_ERR: You must use a valid kind when creating a TimedTextTrack.","SYNTAX_ERR");
+
+						} else {
+							newTrack = new captionator.TextTrack(id,kind,label,language,src,null);
+							if (newTrack) {
+								if (!(videoElement.tracks instanceof Array)) {
+									videoElement.tracks = [];
+								}
+
+								videoElement.tracks.push(newTrack);
+								return newTrack;
+							} else {
+								return false;
+							}
+						}
+					};
+
 					captionator.processVideoElement(videoElements[elementIndex],defaultLanguage,options);
-				}
+				});
+
 				return true;
 			} else {
 				return false;
@@ -925,12 +744,12 @@
 					// Now determine whether the track is visible by default.
 					// The comments in this section come straight from the spec...
 					var trackEnabled = false;
-				
+					
 					// If the text track kind is subtitles or captions and the user has indicated an interest in having a track
 					// with this text track kind, text track language, and text track label enabled, and there is no other text track
 					// in the media element's list of text tracks with a text track kind of either subtitles or captions whose text track mode is showing
 					// ---> Let the text track mode be showing.
-				
+					
 					if ((trackObject.kind === "subtitles" || trackObject.kind === "captions") &&
 						(defaultLanguage === trackObject.language && options.enableCaptionsByDefault)) {
 						if (!trackList.filter(function(trackObject) {
@@ -943,7 +762,7 @@
 							trackEnabled = true;
 						}
 					}
-				
+					
 					// If the text track kind is chapters and the text track language is one that the user agent has reason to believe is
 					// appropriate for the user, and there is no other text track in the media element's list of text tracks with a text track
 					// kind of chapters whose text track mode is showing
@@ -1028,21 +847,11 @@
 					} else {
 						captionator.rebuildCaptions(videoElement);
 					}
-				
-					captionator.synchroniseMediaElements(videoElement);
 				}, false);
 
 				window.addEventListener("resize", function(eventData) {
 					videoElement._captionator_dirtyBit = true; // mark video as dirty, force captionator to rerender captions
 					captionator.rebuildCaptions(videoElement);
-				},false);
-			
-				videoElement.addEventListener("play", function(eventData){
-					captionator.synchroniseMediaElements(videoElement);	
-				},false);
-			
-				videoElement.addEventListener("pause", function(eventData){
-					captionator.synchroniseMediaElements(videoElement);	
 				},false);
 
 				// Hires mode
@@ -1137,63 +946,6 @@
 					cueNode.innerHTML = cue.text.toString(currentTime);
 					videoElement._containerObject.appendChild(cueNode);
 					captionator.styleCue(cueNode,cue,videoElement);
-				});
-			}
-		},
-		/*
-			captionator.synchroniseMediaElements(HTMLVideoElement videoElement)
-		
-			Loops through all the MediaTracks for a given element and manages their display/audibility, synchronising them to the playback of the
-			master video element.
-		
-			This function also synchronises regular HTML5 media elements with a property of syncMaster with a value equal to the ID of the current video
-			element.
-		
-			First parameter: HTMLVideoElement object with associated MediaTracks
-		
-			RETURNS:
-		
-			Nothing.
-
-		*/
-		"synchroniseMediaElements": function(videoElement) {
-			var trackList = videoElement.mediaTracks || [];
-			var options = videoElement._captionatorOptions instanceof Object ? videoElement._captionatorOptions : {};
-			var currentTime = videoElement.currentTime;
-			var synchronisationThreshold = 0.5; // How many seconds of drift will be tolerated before resynchronisation?
-		
-			var synchroniseElement = function(slave,master) {
-				try {
-					if (master.seeking) {
-						slave.pause();
-					}
-			
-					if (slave.currentTime < master.currentTime - synchronisationThreshold || slave.currentTime > master.currentTime + synchronisationThreshold) {
-						slave.currentTime = master.currentTime;
-					}
-			
-					if (slave.paused && !master.paused) {
-						slave.play();
-					} else if (!slave.paused && master.paused) {
-						slave.pause();
-					}
-				} catch(Error) {
-					// Probably tried to seek to an unavailable chunk of video
-				}
-			};
-		
-			// Work out what cues are showing...
-			trackList.forEach(function(track,trackIndex) {
-				if (track.mode === captionator.TextTrack.SHOWING && track.readyState >= captionator.TextTrack.LOADING) {
-					synchroniseElement(track.mediaElement,videoElement);
-				}
-			});
-		
-			if (videoElement.id) {
-				[].slice.call(document.body.querySelectorAll("*[syncMaster=" + videoElement.id + "]"),0).forEach(function(mediaElement,index) {
-					if (mediaElement.tagName.toLowerCase() === "video" || mediaElement.tagName.toLowerCase() === "audio") {
-						synchroniseElement(mediaElement,videoElement);
-					}
 				});
 			}
 		},
@@ -1535,7 +1287,6 @@
 					cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.textPosition/100)) + 
 							videoElement._captionator_availableCueArea.top;
 				}
-				
 				
 				// Iterate through the characters and position them accordingly...
 				currentLine = 0;
@@ -2145,7 +1896,7 @@
 				} else {
 					subtitles = subtitles.split(/\n\n+/g);
 				}
-			
+				
 				subtitles = subtitles.filter(function(lineGroup) {
 									if (lineGroup.match(/^WEBVTT(\s*FILE)?/ig)) {
 										fileType = "WebVTT";
