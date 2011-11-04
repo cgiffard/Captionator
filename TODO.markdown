@@ -18,6 +18,7 @@ TODO
 
 ## Big Stuff ##
 
+* Make it work in old Internet Explorer versions (<9) - This is hard, and will probably require importing underscore.js or a similar syntax-sugar library. A custom wrapper function will enable extracting .currentTime from Flash and Silverlight players.
 * Include QUnit test framework & tests file
 * Externalise & modularise parser, enabling import of alternate parsers into captionator core
 	* Write a parser for TTML

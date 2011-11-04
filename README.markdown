@@ -3,7 +3,6 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5. Just 8KB when gzipped!**
 
-
 What does Captionator do?
 -------------------------
 
@@ -16,6 +15,7 @@ What does Captionator do?
 * Library independent
 * Accessible, with ARIA support
 * Minimal global namespace footprint (written with a closure)
+* Captionator is *not* a video player (this means you can write your own!)
 
 What can I do with Captionator?
 --------------------------

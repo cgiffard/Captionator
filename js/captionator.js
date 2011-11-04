@@ -9,7 +9,7 @@
 /*jshint strict:true */
 /*Tab indented, tab = 4 spaces*/
 
-(function() {
+;(function() {
 	"use strict";
 	
 	//	Variables you might want to tweak
@@ -177,7 +177,7 @@
 					this.src = trackSource || "";
 					this.readyState = captionator.TextTrack.NONE;
 					this.internalDefault = isDefault || false;
-				
+					
 					// Create getters and setters for mode
 					this.getMode = function() {
 						return this.internalMode;
@@ -562,12 +562,12 @@
 											if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
 												if (cueChunk.token === "v") {
 													compositeHTML +="<q data-voice=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\" class='voice " +
-																	"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + "' " + 
+																	"speaker-" + cueChunk.voice.replace(/[^a-z0-9]+/ig,"-").toLowerCase() + " webvtt-span' " + 
 																	"title=\"" + cueChunk.voice.replace(/[\"]/g,"") + "\">" +
 																	processLayer(cueChunk.children,depth+1) +
 																	"</q>";
 												} else if(cueChunk.token === "c") {
-													compositeHTML +="<span class='webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
+													compositeHTML +="<span class='webvtt-span webvtt-class-span " + cueChunk.classes.join(" ") + "'>" +
 																	processLayer(cueChunk.children,depth+1) +
 																	"</span>";
 												} else if(cueChunk.timeIn > 0) {
@@ -575,7 +575,14 @@
 													if ((currentTimestamp === null || currentTimestamp === undefined) ||
 														(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
 												
-														compositeHTML +="<span class='webvtt-timestamp-span' " +
+														compositeHTML +="<span class='webvtt-span webvtt-timestamp-span' " +
+																		"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
+																		processLayer(cueChunk.children,depth+1) +
+																		"</span>";
+														
+													} else if (currentTimestamp < cueChunk.timeIn) {
+														// Deliver tag hidden, with future class
+														compositeHTML +="<span class='webvtt-span webvtt-timestamp-span webvtt-cue-future' style='opacity: 0;' " +
 																		"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
 																		processLayer(cueChunk.children,depth+1) +
 																		"</span>";
@@ -941,9 +948,12 @@
 				// Now we render the cues
 				compositeActiveCues.forEach(function(cue) {
 					var cueNode = document.createElement("div");
+					var cueInner = document.createElement("span");
+					cueInner.className = "captionator-cue-inner";
 					cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
 					cueNode.className = "captionator-cue";
-					cueNode.innerHTML = cue.text.toString(currentTime);
+					cueNode.appendChild(cueInner);
+					cueInner.innerHTML = cue.text.toString(currentTime);
 					videoElement._containerObject.appendChild(cueNode);
 					captionator.styleCue(cueNode,cue,videoElement);
 				});
@@ -1309,6 +1319,10 @@
 						characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
 					}
 					
+					// Because these are positioned absolute, screen readers don't read them properly.
+					// Each of the characters is set to be ignored, and the entire text is applied to the aria-label attribute instead.
+					characterSpan.setAttribute("aria-hidden","true");
+
 					captionator.applyStyles(characterSpan,{
 						"position": "absolute",
 						"top": characterY + "px",
@@ -1582,6 +1596,7 @@
 				// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
 				containerObject.setAttribute("aria-live","polite");
 				containerObject.setAttribute("aria-atomic","true");
+				containerObject.setAttribute("aria-relevant","text");
 			} else if (!containerObject.parentNode) {
 				document.body.appendChild(containerObject);
 			}
