@@ -668,11 +668,11 @@
 						} else {
 							newTrack = new captionator.TextTrack(id,kind,label,language,src,null);
 							if (newTrack) {
-								if (!(videoElement.tracks instanceof Array)) {
-									videoElement.tracks = [];
+								if (!(videoElement.textTracks instanceof Array)) {
+									videoElement.textTracks = [];
 								}
 
-								videoElement.tracks.push(newTrack);
+								videoElement.textTracks.push(newTrack);
 								return newTrack;
 							} else {
 								return false;
@@ -843,7 +843,7 @@
 					var videoElement = eventData.target;
 					// update active cues
 					try {
-						videoElement.tracks.forEach(function(track) {
+						videoElement.textTracks.forEach(function(track) {
 							track.activeCues.refreshCues.apply(track.activeCues);
 						});
 					} catch(error) {}
@@ -865,7 +865,7 @@
 				if (options.enableHighResolution === true) {
 					window.setInterval(function captionatorHighResProcessor() {
 						try {
-							videoElement.tracks.forEach(function(track) {
+							videoElement.textTracks.forEach(function(track) {
 								track.activeCues.refreshCues.apply(track.activeCues);
 							});
 						} catch(error) {}
@@ -895,7 +895,7 @@
 		
 		*/
 		"rebuildCaptions": function(videoElement) {
-			var trackList = videoElement.tracks || [];
+			var trackList = videoElement.textTracks || [];
 			var options = videoElement._captionatorOptions instanceof Object ? videoElement._captionatorOptions : {};
 			var currentTime = videoElement.currentTime;
 			var compositeActiveCues = [];

@@ -5,7 +5,7 @@ var generateTranscript = function() {
 };
 
 var generateMediaControls = function(videoElement) {
-	if (!(videoElement instanceof HTMLVideoElement) || !videoElement.tracks) return null;
+	if (!(videoElement instanceof HTMLVideoElement) || !videoElement.textTracks) return null;
 	
 	var tableFragment = document.createDocumentFragment();
 	// Set up table structure
@@ -80,11 +80,12 @@ var generateMediaControls = function(videoElement) {
 	};
 	
 	// Now make them go!
-	
 	createRowHeader("Text Tracks");
-	createRowsForTrackList(videoElement.tracks);
-	createRowHeader("Media Tracks");
-	createRowsForTrackList(videoElement.mediaTracks);
+	createRowsForTrackList(videoElement.textTracks);
+
+	// No longer legal
+	// createRowHeader("Media Tracks");
+	// createRowsForTrackList(videoElement.mediaTracks);
 	
 	table.appendChild(thead);
 	table.appendChild(tbody);
