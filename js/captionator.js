@@ -395,7 +395,7 @@
 					this.refreshCues();
 				};
 				captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList(null);
-			
+				
 				/**
 				 * @constructor
 				 */
@@ -538,7 +538,7 @@
 					this.onenter = function() {};
 					this.onexit = function() {};
 				};
-			
+				
 				// Captionator internal cue structure object
 				/**
 				 * @constructor
@@ -616,7 +616,7 @@
 					};
 				};
 				captionator.CaptionatorCueStructure.prototype = [];
-			
+				
 				// if requested by options, export the object types
 				if (options.exportObjects) {
 					window.TextTrack = captionator.TextTrack;
@@ -624,7 +624,7 @@
 					window.ActiveTextTrackCueList = captionator.ActiveTextTrackCueList;
 					window.TextTrackCue = captionator.TextTrackCue;
 				}
-
+				
 				// Next time captionator.captionify() is called, the objects are already available to us.
 				objectsCreated = true;
 			}
@@ -646,12 +646,12 @@
 					videoElements.push(element);
 				}
 			}
-		
+			
 			if (videoElements.length) {
 				videoElements.forEach(function(videoElement) {
 					videoElement.addTextTrack = function(id,kind,label,language,src,type,isDefault) {
 						var allowedKinds = ["subtitles","captions","descriptions","captions","metadata","chapters"]; // WHATWG SPEC
-					
+						
 						var textKinds = allowedKinds.slice(0,7);
 						var newTrack;
 						id = typeof(id) === "string" ? id : "";
@@ -786,11 +786,11 @@
 							trackEnabled = true;
 						}
 					}
-				
+					
 					// If the text track kind is descriptions and the user has indicated an interest in having text descriptions
 					// with this text track language and text track label enabled, and there is no other text track in the media element's
 					// list of text tracks with a text track kind of descriptions whose text track mode is showing
-				
+					
 					if (trackObject.kind === "descriptions" && (options.enableDescriptionsByDefault === true) && (defaultLanguage === trackObject.language)) {
 						if (!trackList.filter(function(trackObject) {
 								if (trackObject.kind === "descriptions" && trackObject.mode === captionator.TextTrack.SHOWING) {
@@ -802,10 +802,10 @@
 							trackEnabled = true;
 						}
 					}
-				
+					
 					// If there is a text track in the media element's list of text tracks whose text track mode is showing by default,
 					// the user agent must furthermore change that text track's text track mode to hidden.
-				
+					
 					if (trackEnabled === true) {
 						trackList.forEach(function(trackObject) {
 							if(trackObject.trackNode.hasAttribute("default") && trackObject.mode === captionator.TextTrack.SHOWING) {
@@ -838,7 +838,7 @@
 						trackObject.mode = captionator.TextTrack.SHOWING;
 					}
 				});
-			
+				
 				videoElement.addEventListener("timeupdate", function(eventData){
 					var videoElement = eventData.target;
 					// update active cues
@@ -1112,7 +1112,7 @@
 						"textAlign":	"center"
 					});
 				};
-
+				
 				for (nodeIndex in DOMNode.childNodes) {
 					if (DOMNode.childNodes.hasOwnProperty(nodeIndex)) {
 						currentNode = DOMNode.childNodes[nodeIndex];
@@ -1631,12 +1631,6 @@
 				"lineHeight": baseLineHeight + "pt",
 				"boxSizing": "border-box"
 			});
-		
-			// Defeat a horrid Chrome 10 video bug
-			// http://stackoverflow.com/questions/5289854/chrome-10-custom-video-interface-problem/5400438#5400438
-			if (window.navigator.userAgent.toLowerCase().indexOf("chrome/10") > -1) {	
-				containerObject.style.backgroundColor = "rgba(0,0,0,0.01" + Math.random().toString().replace(".","") + ")";
-			}
 		},
 		/*
 			captionator.parseCaptions(string captionData, object options)
