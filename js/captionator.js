@@ -5,7 +5,7 @@
 
 	https://github.com/cgiffard/Captionator
 */
-/*global HTMLVideoElement: true, NodeList: true, Audio: true, HTMLElement: true */
+/*global HTMLVideoElement: true, NodeList: true, Audio: true, HTMLElement: true, document:true, window:true, XMLHttpRequest:true, navigator:true, VirtualMediaContainer:true */
 /*jshint strict:true */
 /*Tab indented, tab = 4 spaces*/
 
@@ -1418,10 +1418,12 @@
 					
 					// Turn back into string like the TextTrackCue constructor expects
 					cueSettings = "";
-					Object.keys(compositeCueSettings).forEach(function(key,index) {
-						cueSettings += !!cueSettings.length ? " " : "";
-						cueSettings += key + ":" + compositeCueSettings[key];
-					});
+					for (var key in compositeCueSettings) {
+						if (compositeCueSettings.hasOwnProperty(key)) {
+							cueSettings += !!cueSettings.length ? " " : "";
+							cueSettings += key + ":" + compositeCueSettings[key];
+						}
+					}
 					
 					// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
 					html = options.processCueHTML === false ? subtitleParts.join("\n") : processCaptionHTML(subtitleParts.join("\n"));
@@ -1933,6 +1935,33 @@
 		};
 	};
 	captionator.CaptionatorCueStructure.prototype = [];
+	
+	var VirtualMediaContainer = function(targetObject) {
+		this.targetObject = targetObject;
+		this.currentTime = 0;
+		var timeupdateEventHandler = function() {};
+
+		this.addEventListener = function(event,handler,ignore) {
+			if (event === "timeupdate" && handler instanceof Function) {
+				this.timeupdateEventHandler = handler;
+			}
+		};
+
+		this.attachEvent = function(event,handler) {
+			if (event === "timeupdate" && handler instanceof Function) {
+				this.timeupdateEventHandler = handler;
+			}
+		};
+
+		this.updateTime = function(newTime) {
+			if (!isNaN(newTime)) {
+				this.currentTime = newTime;
+				timeupdateEventHandler();
+			}
+		};
+		
+		
+	};
 	
 	window.captionator = captionator;
 })();
