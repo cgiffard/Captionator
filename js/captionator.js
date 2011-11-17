@@ -1,11 +1,11 @@
 /*
-	Captionator 0.5 [CaptionCrunch]
+	Captionator 0.5.1 [CaptionCrunch]
 	Christopher Giffard, 2011
 	Share and enjoy
 
 	https://github.com/cgiffard/Captionator
 */
-/*global HTMLVideoElement: true, NodeList: true, Audio: true, HTMLElement: true */
+/*global HTMLVideoElement: true, NodeList: true, Audio: true, HTMLElement: true, document:true, window:true, XMLHttpRequest:true, navigator:true */
 /*jshint strict:true */
 /*Tab indented, tab = 4 spaces*/
 
@@ -2121,10 +2121,12 @@
 					
 					// Turn back into string like the TextTrackCue constructor expects
 					cueSettings = "";
-					Object.keys(compositeCueSettings).forEach(function(key,index) {
-						cueSettings += !!cueSettings.length ? " " : "";
-						cueSettings += key + ":" + compositeCueSettings[key];
-					});
+					for (var key in compositeCueSettings) {
+						if (compositeCueSettings.hasOwnProperty(key)) {
+							cueSettings += !!cueSettings.length ? " " : "";
+							cueSettings += key + ":" + compositeCueSettings[key];
+						}
+					}
 					
 					// The remaining lines are the subtitle payload itself (after removing an ID if present, and the time);
 					html = options.processCueHTML === false ? subtitleParts.join("\n") : processCaptionHTML(subtitleParts.join("\n"));
