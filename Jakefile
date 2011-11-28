@@ -1,8 +1,9 @@
 // Captionator.js Build Jakefile
 //
-// usage: (obviously you should omit the jake install if you already have it!)
+// usage: (obviously you should omit a given module installation if you already have it!)
 //
-// npm install jake
+// npm install --global jshint
+// npm install --global jake
 // npm install uglify-js
 // jake
 //
