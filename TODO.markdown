@@ -25,10 +25,10 @@ TODO
 	* **50%** Write a parser for LRC
 	* Write a parser for SSA/ASS
 * Implement animation options
-* Split and build with Jake
+* **DONE!** <strike>Split and build with Jake</strike>
 * **DONE!** <strike>WebVTT Support! (Just compatibility checking to do now!)</strike>
 * **DONE!** <strike>Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).</strike>
-* **DONE!** Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
+* **DONE!** <strike>Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)</strike>
 
 ## Bugs ##
 
