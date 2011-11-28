@@ -1,6 +1,6 @@
 /**
- * @constructor
- */
+* @constructor
+*/
 captionator.TextTrackCueList = function TextTrackCueList(track) {
 	this.track = track instanceof captionator.TextTrack ? track : null;
 
@@ -38,8 +38,8 @@ captionator.TextTrackCueList = function TextTrackCueList(track) {
 captionator.TextTrackCueList.prototype = [];
 
 /**
- * @constructor
- */
+* @constructor
+*/
 captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList,textTrack) {
 	// Among active cues:
 

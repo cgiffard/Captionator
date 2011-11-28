@@ -1,8 +1,8 @@
 // Set up objects & types
 // As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
 /**
- * @constructor
- */
+* @constructor
+*/
 captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault) {
 
 	this.onload = function () {};

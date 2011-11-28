@@ -192,4 +192,4 @@ captionator.processVideoElement = function(videoElement,defaultLanguage,options)
 	}
 
 	return videoElement;
-}
+};

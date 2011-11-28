@@ -1,6 +1,6 @@
 /**
- * @constructor
- */
+* @constructor
+*/
 captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
 	// Set up internal data store
 	this.id = id;

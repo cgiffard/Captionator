@@ -11,13 +11,15 @@
 var globalCopyright = "";
 var uglifyParser	= require("uglify-js").parser,
 	uglifyProcessor	= require("uglify-js").uglify,
-	fs				= require("fs");
+	fs				= require("fs"),
+	hint			= require("jshint").JSHINT;
 
 desc("Builds Captionator.js including a minified variant to JS directory.");
 task("default", [], function() {
 	jake.Task.build.invoke();
-	// jake.Task["lint"].invoke();
+	jake.Task.lint.invoke();
 	jake.Task.minify.invoke();
+	jake.Task.test.invoke();
 });
 
 desc("Builds Captionator.js as an unimified file.");
@@ -84,7 +86,8 @@ file("build",[],function() {
 	globalCopyright = combine(copyright,0);
 
 	// Start closure
-	buildBuffer += ";(function(){\n";
+	buildBuffer += "(function(){\n";
+	buildBuffer += "\t\"use strict\";\n";
 
 	// Append header code
 	buildBuffer += combine(header,1);
@@ -125,7 +128,32 @@ task("minify",["build"],function() {
 	});
 },true);
 
-desc("Tests/lints Captionator.js.");
+desc("Runs built, unminified captionator.js through jshint.");
+task("lint",["build"],function() {
+	fs.readFile("./js/captionator.js",function(err,data) {
+		if (err) {
+			fail("Unable to read unminified captionator.js infile.",1);
+		} else {
+			if (hint(data.toString("utf8"))) {
+				console.log("JSHINT executed without error.");
+			} else {
+				console.log("JSHINT tripped on the following errors:");
+				var errorData = hint.data().errors;
+
+				for (var errorIndex in errorData) {
+					if (errorData.hasOwnProperty(errorIndex)) {
+						var cError = errorData[errorIndex];
+						console.log("\tLine %d, Char %d: %s",cError.line,cError.character,cError.reason);
+					}
+				}
+
+				fail("JSHINT failed with %d errors.",errorData.length);
+			}
+		}
+	});
+});
+
+desc("Runs Captionator.js test suite.");
 task("test",["build"],function() {
-	fail("I haven't built the test suite yet! Oh no! (You could build it, you know.)",0);
+	// fail("I haven't built the test suite yet! Oh no! (You could build it, you know.)",0);
 });

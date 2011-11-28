@@ -1,7 +1,7 @@
 // Captionator internal cue structure object
 /**
- * @constructor
- */
+* @constructor
+*/
 captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource,options) {
 	var cueStructureObject = this;
 	this.isTimeDependent = false;

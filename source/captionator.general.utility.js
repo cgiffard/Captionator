@@ -9,8 +9,8 @@ captionator.createDOMException = function(code,message,name) {
 	} catch(Error) {
 		//	Catch it and subclass it
 		/**
-		 * @constructor
-		 */
+		* @constructor
+		*/
 		var CustomDOMException = function CustomDOMException(code,message,name){ this.code = code; this.message = message; this.name = name; };
 		CustomDOMException.prototype = Error;
 		return new CustomDOMException(code,message,name);

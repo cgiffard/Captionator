@@ -1,3 +1,6 @@
+/**
+* @constructor
+*/
 var VirtualMediaContainer = function(targetObject) {
 	this.targetObject = targetObject;
 	this.currentTime = 0;

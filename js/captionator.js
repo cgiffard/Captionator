@@ -10,7 +10,8 @@
 /*jshint strict:true */
 /*Tab indented, tab = 4 spaces*/
 
-;(function(){
+(function(){
+	"use strict";
 
 	//	Variables you might want to tweak
 	var minimumFontSize = 10;				//	We don't want the type getting any smaller than this.
@@ -25,8 +26,8 @@
 
 	// Captionator internal cue structure object
 	/**
-	 * @constructor
-	 */
+	* @constructor
+	*/
 	captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource,options) {
 		var cueStructureObject = this;
 		this.isTimeDependent = false;
@@ -104,8 +105,8 @@
 	// Set up objects & types
 	// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
 	/**
-	 * @constructor
-	 */
+	* @constructor
+	*/
 	captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault) {
 	
 		this.onload = function () {};
@@ -254,8 +255,8 @@
 	captionator.TextTrack.SHOWING = 2;
 
 	/**
-	 * @constructor
-	 */
+	* @constructor
+	*/
 	captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, settings, pauseOnExit, track) {
 		// Set up internal data store
 		this.id = id;
@@ -397,8 +398,8 @@
 	};
 
 	/**
-	 * @constructor
-	 */
+	* @constructor
+	*/
 	captionator.TextTrackCueList = function TextTrackCueList(track) {
 		this.track = track instanceof captionator.TextTrack ? track : null;
 	
@@ -436,8 +437,8 @@
 	captionator.TextTrackCueList.prototype = [];
 	
 	/**
-	 * @constructor
-	 */
+	* @constructor
+	*/
 	captionator.ActiveTextTrackCueList = function ActiveTextTrackCueList(textTrackCueList,textTrack) {
 		// Among active cues:
 	
@@ -484,6 +485,9 @@
 	};
 	captionator.ActiveTextTrackCueList.prototype = new captionator.TextTrackCueList(null);
 
+	/**
+	* @constructor
+	*/
 	var VirtualMediaContainer = function(targetObject) {
 		this.targetObject = targetObject;
 		this.currentTime = 0;
@@ -1221,7 +1225,7 @@
 		}
 	
 		return videoElement;
-	}
+	};
 
 	/*
 		captionator.getNodeMetrics(DOMNode)
@@ -1914,8 +1918,8 @@
 		} catch(Error) {
 			//	Catch it and subclass it
 			/**
-			 * @constructor
-			 */
+			* @constructor
+			*/
 			var CustomDOMException = function CustomDOMException(code,message,name){ this.code = code; this.message = message; this.name = name; };
 			CustomDOMException.prototype = Error;
 			return new CustomDOMException(code,message,name);
