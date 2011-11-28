@@ -3,7 +3,7 @@ TODO
 
 * Fix Japanese, Korean, Chinese text line breaking in vertical captions
 * Fix BCP-47 language string parsing
-* Enable WebVTT inline style support (already parsed, but ignored by renderer)
+* **DONE!** Enable WebVTT inline style support (already parsed, but ignored by renderer)
 * **50% - `addCue` complete** Implement <strike>`addCue`</strike> and `removeCue` events _properly_ for TextTrack objects
 * **DONE!** <strike>API Reference Docs</strike>
 * **DONE!** <strike>Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)</strike>
@@ -23,7 +23,9 @@ TODO
 * Externalise & modularise parser, enabling import of alternate parsers into captionator core
 	* Write a parser for TTML
 	* **50%** Write a parser for LRC
+	* Write a parser for SSA/ASS
 * Implement animation options
+* Split and build with Jake
 * **DONE!** <strike>WebVTT Support! (Just compatibility checking to do now!)</strike>
 * **DONE!** <strike>Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).</strike>
 * **DONE!** Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
