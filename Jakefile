@@ -102,6 +102,9 @@ file("build",[],function() {
 	// End closure
 	buildBuffer += "\n})();\n";
 
+	// Replace exports with captionator object subproperty
+	buildBuffer = buildBuffer.replace(/exports\./,"captionator.");
+
 	// Output file...
 	fs.writeFileSync("./js/captionator.js",buildBuffer);
 	console.log("Output result to captionator.js.");
@@ -148,7 +151,7 @@ task("lint",["build"],function() {
 					}
 				}
 
-				fail("JSHINT failed with %d errors.",errorData.length);
+				fail("JSHINT failed with " + errorData.length + " error(s).");
 			}
 		}
 	});

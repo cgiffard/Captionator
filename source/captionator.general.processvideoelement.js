@@ -166,7 +166,7 @@ captionator.processVideoElement = function(videoElement,defaultLanguage,options)
 				captionator.rebuildCaptions(videoElement);
 			}
 		}, false);
-
+		
 		window.addEventListener("resize", function(eventData) {
 			videoElement._captionator_dirtyBit = true; // mark video as dirty, force captionator to rerender captions
 			captionator.rebuildCaptions(videoElement);

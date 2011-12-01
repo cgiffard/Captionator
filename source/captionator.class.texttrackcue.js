@@ -6,7 +6,7 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 	this.id = id;
 	this.track = track instanceof captionator.TextTrack ? track : null;
 	this.startTime = parseFloat(startTime);
-	this.endTime = parseFloat(endTime);
+	this.endTime = parseFloat(endTime) >= this.startTime ? parseFloat(endTime) : this.startTime;
 	this.text = typeof(text) === "string" || text instanceof captionator.CaptionatorCueStructure ? text : "";
 	this.settings = typeof(settings) === "string" ? settings : "";
 	this.intSettings = {};

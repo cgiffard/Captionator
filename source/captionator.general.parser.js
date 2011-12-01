@@ -14,7 +14,7 @@
 	An array of TextTrackCue Objects in initial state.
 */
 
-captionator.parseCaptions = function(captionData, options) {
+exports.parseCaptions = function(captionData, options) {
 	// Be liberal in what you accept from others...
 	options = options instanceof Object ? options : {};
 	var fileType = "", subtitles = [];
@@ -31,6 +31,9 @@ captionator.parseCaptions = function(captionData, options) {
 	var WebVTTDEFAULTSCueParser		= /^(DEFAULTS|DEFAULT)\s+\-\-\>\s+(.*)/g;
 	var WebVTTSTYLECueParser		= /^(STYLE|STYLES)\s+\-\-\>\s*\n([\s\S]*)/g;
 	var WebVTTCOMMENTCueParser		= /^(COMMENT|COMMENTS)\s+\-\-\>\s+(.*)/g;
+	var TTMLCheck					= /<tt\s+xml/ig;
+	var TTMLTimestampParserAdv		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)/;
+	var TTMLTimestampParserHuman	= /^([\d\.]+)[smhdwy]/ig; // Under development, will need to study TTML spec more. :)
 	
 	if (captionData) {
 		// This function parses and validates cue HTML/VTT tokens, and converts them into something understandable to the renderer.
@@ -261,41 +264,82 @@ captionator.parseCaptions = function(captionData, options) {
 			return tmpCue;
 		};
 		
+		var processTTMLTimestamp = function processTTMLTimestamp(timestamp)  {
+			var timeData, timeValue = 0;
+			if (typeof(timestamp) !== "string") return 0;
+
+			if ((timeData = TTMLTimestampParserAdv.exec(timestamp))) {
+				timeData = timeData.slice(1);
+				timeValue =	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
+							parseInt((timeData[1]||0) * 60,10) +		// Minutes
+							parseInt((timeData[2]||0),10) +				// Seconds
+							parseFloat("0." + (timeData[3]||0));		// MS
+			}
+
+			return timeValue;
+		};
+
+		var parseXMLChunk = function parseXMLChunk(xmlNode,index) {
+			var timeDataIn, timeDataOut, html, tmpCue, timeIn = 0, timeOut = 0;
+			var timestampIn = String(xmlNode.getAttribute("begin"));
+			var timestampOut = String(xmlNode.getAttribute("end"));
+			var id = xmlNode.getAttribute("id") || index;
+
+			timeIn = processTTMLTimestamp(timestampIn);
+			timeOut = processTTMLTimestamp(timestampOut);
+
+			html = options.processCueHTML === false ? xmlNode.innerHTML : processCaptionHTML(xmlNode.innerHTML);
+			return new captionator.TextTrackCue(id, timeIn, timeOut, html, {}, false, null);
+		};
+
 		// Begin parsing --------------------
 		subtitles = captionData
 						.replace(/\r\n/g,"\n")
 						.replace(/\r/g,"\n");
-	
-		if (LRCTimestampParser.exec(captionData)) {
-			// LRC file... split by single line
-			subtitles = subtitles.split(/\n+/g);
-			fileType = "LRC";
-		} else {
-			subtitles = subtitles.split(/\n\n+/g);
-		}
 		
-		subtitles = subtitles.filter(function(lineGroup) {
-							if (lineGroup.match(/^WEBVTT(\s*FILE)?/ig)) {
-								fileType = "WebVTT";
-								return false;
-							} else {
-								if (lineGroup.replace(/\s*/ig,"").length) {
+		if (TTMLCheck.exec(captionData)) {
+			// We're dealing with TTML
+			// Simple, ugly way of getting QSA on our data.
+			var TTMLElement = document.createElement("ttml");
+			TTMLElement.innerHTML = captionData;
+
+			var captionElements = [].slice.call(TTMLElement.querySelectorAll("[begin],[end]"),0);
+			var captions = captionElements.map(parseXMLChunk);
+			
+			return captions;
+		} else {
+			// We're dealing with an SRT-style line-based format
+			if (LRCTimestampParser.exec(captionData)) {
+				// LRC file... split by single line
+				subtitles = subtitles.split(/\n+/g);
+				fileType = "LRC";
+			} else {
+				subtitles = subtitles.split(/\n\n+/g);
+			}
+			
+			subtitles = subtitles.filter(function(lineGroup) {
+								if (lineGroup.match(/^WEBVTT(\s*FILE)?/ig)) {
+									fileType = "WebVTT";
+									return false;
+								} else {
+									if (lineGroup.replace(/\s*/ig,"").length) {
+										return true;
+									}
+									return false;
+								}
+							})
+							.map(parseCaptionChunk)
+							.filter(function(cue) {
+								// In the parseCaptionChunk function, we return null for special and malformed cues,
+								// and cues we want to ignore, rather than expose to JS. Filter these out now.
+								if (cue !== null) {
 									return true;
 								}
-								return false;
-							}
-						})
-						.map(parseCaptionChunk)
-						.filter(function(cue) {
-							// In the parseCaptionChunk function, we return null for special and malformed cues,
-							// and cues we want to ignore, rather than expose to JS. Filter these out now.
-							if (cue !== null) {
-								return true;
-							}
 
-							return false;
-						});
-		
+								return false;
+							});
+		}
+
 		return subtitles;
 	} else {
 		throw new Error("Required parameter captionData not supplied.");
