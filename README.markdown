@@ -16,7 +16,7 @@ What does Captionator do?
 * Accessible, with ARIA support
 * Minimal global namespace footprint (written with a closure)
 * Captionator is *not* a video player (this means you can write your own!)
-* Currently the *most comprehensive* polyfill available for Closed Captioning!
+* Currently the **most comprehensive** polyfill available for Closed Captioning!
 
 What can I do with Captionator?
 --------------------------
