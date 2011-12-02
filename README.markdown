@@ -9,13 +9,14 @@ What does Captionator do?
 * Implements the WHATWG `TimedTextTrack` Specification, complete with the full JavaScript API
 * Supports the `<track>` element
 * Supports 100% of WebVTT, along with WebVTT v2 proposed features
-* Additional support for SRT, SBV, and SUB caption/subtitle formats
+* Additional support for SRT, Youtube/SBV, SUB, LRC, and TTML caption/subtitle formats
 * Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!
 * Small, configurable, and under active development
 * Library independent
 * Accessible, with ARIA support
 * Minimal global namespace footprint (written with a closure)
 * Captionator is *not* a video player (this means you can write your own!)
+* Currently the *most comprehensive* polyfill available for Closed Captioning!
 
 What can I do with Captionator?
 --------------------------
@@ -188,17 +189,53 @@ The following lists options which you can pass to captionator:
 Video and Audio tracks (MediaTrack)
 -----------------------------------
 
-**PLEASE NOTE:** The WHATWG now has a specification for Media Tracks, which is separated out into `audioTrack` and `videoTrack` categories. For now, this functionality remains in Captionator, but it will change. **I would advise you to avoid using it for now.**
+A/V track support has been removed from Captionator as the specification changed.
 
-Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
 
-This is a documentation category in and of itself, so I've moved it to [MediaTrack.markdown](https://github.com/cgiffard/Captionator/blob/master/MediaTrack.markdown).
+Building Captionator.js
+-----------------------
 
+Captionator.js comes pre-built in both unminified and minified versions, but you can build it yourself.
+
+You'll need node.js, jake, jshint, and uglify-js. You can use this [guide to installing node.js](https://github.com/joyent/node/wiki/Installation) if you get stuck.
+
+Once that's done, install the dependencies with npm:
+
+```sh
+npm install --global jshint
+npm install --global jake
+npm install --global uglify-js
+```
+
+All done? Now, do whatever you need to do to Captionator by modifying its various components in the `/source` directory. When you're ready to build, you can just:
+
+```
+jake
+```
+
+The default jake task builds and lints the file, minifies it, and runs through the test suite. That's it! All files created are placed in the `/js` directory, ready for production use.
+
+You can also independently run each of the following tasks:
+
+* `jake test` - runs the Captionator test suite
+* `jake build` - builds the unminified Captionator.js
+* `jake minify` - generates the minified `captionator-min.js`
+* `jake lint` - runs JSHINT over the unminified file.
+
+#### Autobuild
+
+If you use a Mac, and Safari, autobuild.pl is a little script which monitors the source files, and then rebuilds, minifies, and lints captionator.js - and reloads your Safari tab whenever it detects changes. Using it is as simple as running:
+
+```sh
+./autobuild.pl
+```
 
 New Features
 ---------------
 
 * Supports WebVTT proposed features such as `DEFAULTS`, `STYLE`, and `COMMENT` cues
+* Now supports TTML and LRC
+* Advanced layout engine ensures cues are appropriately sized and positioned regardless of how many are enabled at any one time (with limits, obviously!)
 * Optional auto cue sizing algorithm, which sizes the cue to the text bounding box
 * Brand new WebVTT renderer, with new styling options!
 * Performs automatic validation of WebVTT cue spans and HTML!

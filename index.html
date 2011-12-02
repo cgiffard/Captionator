@@ -7,7 +7,7 @@
 	</head>
 	<body>
 		<h1>HTML5 Video Closed Captioning Example</h1>
-		<video controls autobuffer id="videoTest" width="1010" height="464">
+		<video controls autobuffer id="videoTest" width="1010" height="464" style="width: 100%; height: auto !important;">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
@@ -22,7 +22,7 @@
 			<track kind="subtitles" src="video/ttml-govt.xml" type="application/ttml+xml" srclang="en" label="TTML Example" />
 
 			<!-- LRC Example (not for this video) -->
-			<!-- Taken from: http://www.stepmania.com/wiki/Song_Lyrics_-_LRC_Format -->
+			<!-- Adapted from: http://www.stepmania.com/wiki/Song_Lyrics_-_LRC_Format -->
 			<track kind="subtitles" src="video/example.lrc" type="text/lrc" srclang="en" label="LRC Example" default />
 
 			<!-- WebVTT Testing & Examples -->
