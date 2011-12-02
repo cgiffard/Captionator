@@ -20,9 +20,9 @@ TODO
 
 * Make it work in old Internet Explorer versions (<9) - This is hard, and will probably require importing underscore.js or a similar syntax-sugar library. A custom wrapper function will enable extracting .currentTime from Flash and Silverlight players.
 * Include QUnit test framework & tests file
-* Externalise & modularise parser, enabling import of alternate parsers into captionator core
-	* Write a parser for TTML
-	* **50%** Write a parser for LRC
+* **50%** Externalise & modularise parser, enabling import of alternate parsers into captionator core
+	* **DONE!** <strike>Write a parser for TTML</strike>
+	* **DONE!** <strike>Write a parser for LRC</strike>
 	* Write a parser for SSA/ASS
 * Implement animation options
 * **DONE!** <strike>Split and build with Jake</strike>

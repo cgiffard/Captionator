@@ -756,7 +756,7 @@
 		var SRTTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
 		var SRTChunkTimestampParser		= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
 		var GoogleTimestampParser		= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-		var LRCTimestampParser			= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2})\]\s*(.*?)$/i;
+		var LRCTimestampParser			= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2,3})\]\s*(.*?)$/;
 		var WebVTTDEFAULTSCueParser		= /^(DEFAULTS|DEFAULT)\s+\-\-\>\s+(.*)/g;
 		var WebVTTSTYLECueParser		= /^(STYLE|STYLES)\s+\-\-\>\s*\n([\s\S]*)/g;
 		var WebVTTCOMMENTCueParser		= /^(COMMENT|COMMENTS)\s+\-\-\>\s+(.*)/g;
@@ -775,7 +775,8 @@
 					stack = [],
 					stackIndex = 0,
 					chunkTimestamp,
-					timeData;
+					timeData,
+					lastCueTime; // Useful for LRC, which does not specify an end time
 				
 				var hasRealTextContent = function(textInput) {
 					return !!textInput.replace(/[^a-z0-9]+/ig,"").length;
@@ -887,10 +888,10 @@
 				} else if ((specialCueData = WebVTTCOMMENTCueParser.exec(subtitleElement))) {
 					return null; // At this stage, we don't want to do anything with these.
 				}
-				
+	
 				if (fileType === "LRC") {
 					subtitleParts = [
-						subtitleElement.substr(0,subtitleElement.indexOf("]")),
+						subtitleElement.substr(0,subtitleElement.indexOf("]")+1),
 						subtitleElement.substr(subtitleElement.indexOf("]")+1)
 					];
 				} else {
@@ -902,7 +903,7 @@
 					subtitleParts.shift();
 				}
 			
-				if (subtitleParts[0].match(/^\s*[a-z0-9]+\s*$/ig)) {
+				if (subtitleParts[0].match(/^\s*[a-z0-9\-]+\s*$/ig)) {
 					// The identifier becomes the cue ID (when *we* load the cues from file. Programatically created cues can have an ID of whatever.)
 					id = String(subtitleParts.shift().replace(/\s*/ig,""));
 				} else {
@@ -946,6 +947,16 @@
 						if (timeData[2]) {
 							cueSettings = timeData[2];
 						}
+	
+					} else if (!!(timestampMatch = LRCTimestampParser.exec(timestamp))) {
+						timeData = timestampMatch.slice(1,timestampMatch.length-1);
+	
+						timeIn =	parseInt((timeData[0]||0) * 60 * 60,10) +	// Hours
+									parseInt((timeData[1]||0) * 60,10) +		// Minutes
+									parseInt((timeData[2]||0),10) +				// Seconds
+									parseFloat("0." + (timeData[3]||0));		// MS
+						
+						timeOut = timeIn;
 					}
 					
 					// We've got the timestamp - return all the other unmatched lines as the raw subtitle data
@@ -1037,8 +1048,13 @@
 				
 				return captions;
 			} else {
-				// We're dealing with an SRT-style line-based format
-				if (LRCTimestampParser.exec(captionData)) {
+				// We're dealing with a line-based format
+				// Check whether any of the lines match an LRC format
+	
+				if (captionData.split(/\n+/g).reduce(function(prev,current,index,array) {
+						return prev || !!LRCTimestampParser.exec(current);
+					},false)) {
+					
 					// LRC file... split by single line
 					subtitles = subtitles.split(/\n+/g);
 					fileType = "LRC";
@@ -1067,9 +1083,39 @@
 	
 									return false;
 								});
+				
+				if (fileType === "LRC") {
+					// Post-process to get appropriate end-times for LRC cues
+					// LRC cue end times are not explicitly set, they are
+					// implicit based on the start time of the next cue.
+					// We also then do a pass to strip blank cues.
+	
+					subtitles
+						.forEach(function(cue,index) {
+							var thisCueStartTime = 0, lastCue;
+							if (index > 0) {
+								thisCueStartTime = cue.startTime;
+								lastCue = subtitles[--index];
+	
+								if (lastCue.endTime < thisCueStartTime) {
+									lastCue.endTime = thisCueStartTime;
+								}
+							}
+						});
+					
+					subtitles = subtitles.filter(function(cue) {
+							if (cue.text.toString().replace(/\s*/,"").length > 0) {
+								return true;
+							}
+	
+							return false;
+						});
+				}
+	
+				return subtitles;
 			}
 	
-			return subtitles;
+			return [];
 		} else {
 			throw new Error("Required parameter captionData not supplied.");
 		}
