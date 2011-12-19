@@ -112,13 +112,27 @@ file("build",[],function() {
 
 desc("Minifies an already built Captionator.js.");
 task("minify",["build"],function() {
+
+	// Remove debug code
+	function removeDebugCode(codeIn) {
+		var codeParts = codeIn.split(/\/\/\s*DEBUG\->/g);
+
+		return codeParts.map(function(part) {
+				if (part.match(/\/\/\s*<\-DEBUG/g)) {
+					return part.split(/\s*\/\/\s*<\-DEBUG/g).pop();
+				}
+				// console.log(part);
+				return part;
+			}).join("");
+	}
+
 	console.log("Minifying...");
 	fs.readFile("./js/captionator.js",function(err,data) {
 		if (err) {
 			fail("Unable to read unminified captionator.js infile.",1);
 		} else {
 			var unminifiedLength = data.length;
-			var captionatorData = data.toString("utf8");
+			var captionatorData = removeDebugCode(data.toString("utf8"));
 			var ast = uglifyParser.parse(captionatorData);
 			ast = uglifyProcessor.ast_mangle(ast);
 			ast = uglifyProcessor.ast_squeeze(ast);

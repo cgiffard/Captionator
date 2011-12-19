@@ -54,11 +54,12 @@ captionator.captionify = function(element,defaultLanguage,options) {
 	if (!HTMLVideoElement && !(element instanceof VirtualMediaContainer) ) {
 		// Browser doesn't support HTML5 video - die here.
 		return false;
-	} else {
-		// Browser supports native track API
-		if (typeof(document.createElement("video").addTextTrack) === "function") {
-			return false;
-		}
+	}
+	
+	// Browser supports native track API
+	// This should catch Chrome latest and IE10.
+	if (typeof(document.createElement("video").addTextTrack) === "function" || typeof(document.createElement("video").addTrack) === "function") {
+		return false;
 	}
 	
 	// if requested by options, export the object types

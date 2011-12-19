@@ -466,6 +466,8 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 			videoElement._captionator_availableCueArea.top;
 	}
 	
+	// DEBUG->
+
 	// DEBUG FUNCTIONS
 	// This function can be used for debugging WebVTT captions. It will not be
 	// included in production versions of Captionator.
@@ -567,6 +569,7 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		drawLines();
 	}
 	// END DEBUG FUNCTIONS
+	// <-DEBUG
 };
 
 /*
