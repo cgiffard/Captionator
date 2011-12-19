@@ -1,3 +1,7 @@
+// NODE->
+var captionator = {};
+// <-NODE
+
 // Captionator internal cue structure object
 /**
 * @constructor
@@ -75,3 +79,7 @@ captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource
 	};
 };
 captionator.CaptionatorCueStructure.prototype = [];
+
+// NODE->
+exports.CaptionatorCueStructure = captionator.CaptionatorCueStructure;
+// <-NODE

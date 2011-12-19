@@ -24,6 +24,8 @@
 	var captionator = {};
 	window.captionator = captionator;
 
+	
+	
 	// Captionator internal cue structure object
 	/**
 	* @constructor
@@ -101,7 +103,11 @@
 		};
 	};
 	captionator.CaptionatorCueStructure.prototype = [];
+	
+	
 
+	
+	
 	// Set up objects & types
 	// As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
 	/**
@@ -253,7 +259,11 @@
 	captionator.TextTrack.OFF = 0;
 	captionator.TextTrack.HIDDEN = 1;
 	captionator.TextTrack.SHOWING = 2;
+	
+	
 
+	
+	
 	/**
 	* @constructor
 	*/
@@ -396,6 +406,8 @@
 		this.onenter = function() {};
 		this.onexit = function() {};
 	};
+	
+	
 
 	/**
 	* @constructor
@@ -744,6 +756,9 @@
 		An array of TextTrackCue Objects in initial state.
 	*/
 	
+	
+	
+	
 	captionator.parseCaptions = function(captionData, options) {
 		// Be liberal in what you accept from others...
 		options = options instanceof Object ? options : {};
@@ -784,17 +799,13 @@
 				};
 				
 				// Process out special cue spans
-				cueSplit = inputHTML
-							.split(/(<\/?[^>]+>)/ig)
-							.filter(function(cuePortionText) {
-								return !!cuePortionText.replace(/\s*/ig,"");
-							});
+				cueSplit = inputHTML.split(/(<\/?[^>]+>)/ig);
 				
 				currentContext = cueStructure;
 				for (splitIndex in cueSplit) {
 					if (cueSplit.hasOwnProperty(splitIndex)) {
 						currentToken = cueSplit[splitIndex];
-					
+						
 						if (currentToken.substr(0,1) === "<") {
 							if (currentToken.substr(1,1) === "/") {
 								// Closing tag

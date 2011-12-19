@@ -1,3 +1,7 @@
+// NODE->
+var captionator = {};
+// <-NODE
+
 // Set up objects & types
 // As defined by http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html
 /**
@@ -149,3 +153,7 @@ captionator.TextTrack.ERROR = 3;
 captionator.TextTrack.OFF = 0;
 captionator.TextTrack.HIDDEN = 1;
 captionator.TextTrack.SHOWING = 2;
+
+// NODE->
+exports.TextTrack = captionator.TextTrack
+// <-NODE

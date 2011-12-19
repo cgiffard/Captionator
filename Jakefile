@@ -26,7 +26,20 @@ task("default", [], function() {
 desc("Builds Captionator.js as an unimified file.");
 file("build",[],function() {
 	directory("js");
+	
+	// Remove node-only code
+	function removeNodeCode(codeIn) {
+		var codeParts = codeIn.split(/\/\/\s*NODE\->/g);
 
+		return codeParts.map(function(part) {
+				if (part.match(/\/\/\s*<\-NODE/g)) {
+					return part.split(/\s*\/\/\s*<\-NODE/g).pop();
+				}
+				// console.log(part);
+				return part;
+			}).join("");
+	}
+	
 	console.log("Building Captionator.js...");
 
 	var buildBuffer = "";
@@ -103,7 +116,10 @@ file("build",[],function() {
 	buildBuffer += "\n})();\n";
 
 	// Replace exports with captionator object subproperty
-	buildBuffer = buildBuffer.replace(/exports\./,"captionator.");
+	buildBuffer = buildBuffer.replace(/exports\./g,"captionator.");
+	
+	// Remove node-code:
+	buildBuffer = removeNodeCode(buildBuffer);
 
 	// Output file...
 	fs.writeFileSync("./js/captionator.js",buildBuffer);
@@ -172,6 +188,48 @@ task("lint",["build"],function() {
 });
 
 desc("Runs Captionator.js test suite.");
-task("test",["build"],function() {
-	// fail("I haven't built the test suite yet! Oh no! (You could build it, you know.)",0);
+task("test",[],function() {
+	var tests = [];
+	
+	var testFiles = fs.readdirSync("./tests").filter(function(file) {
+		return !!file.match(/\.js$/i);
+	});
+		
+	testFiles.forEach(function(item) {
+		try {
+			console.log("Including testfile " + item);
+			var testObject = require("./tests/" + item);
+			tests.push({
+				"filename": item,
+				"name": testObject.name,
+				"description": testObject.description,
+				"test": testObject.test
+			});
+		} catch(error) {
+			console.log(error);
+			fail("Failed to read test file: " + item,1);
+		}
+	});
+	
+	tests.forEach(function(test) {
+		console.log("Running Test: %s",test.name);
+		console.log("\t%s",test.description);
+		
+		try {
+			var result = test.test();
+			if (result.passed) {
+				console.log("\tTest '%s' passed successfully.",test.filename);
+			} else {
+				console.log("\t%d tests did not pass.",result.errors.length);
+				result.errors.forEach(function(error){
+					console.log("\t\t%s",error);
+				});
+				
+				fail("Test '" + test.filename + "' failed!");
+			}
+		} catch(error) {
+			console.log(error);
+			fail("Test '" + test.filename + "' failed!");
+		}
+	});
 });

@@ -14,6 +14,25 @@
 	An array of TextTrackCue Objects in initial state.
 */
 
+// NODE->
+// A code to enable parsing captions in node
+
+var jsdom = require("jsdom");
+var document = jsdom.jsdom("<html><body></body></html>",null,{
+		"features": {
+			"QuerySelector": true
+		}
+	});
+
+var captionator = {};
+captionator.TextTrackCue = require("./captionator.class.texttrackcue.js").TextTrackCue;
+captionator.CaptionatorCueStructure = require("./captionator.class.cuestructure.js").CaptionatorCueStructure;
+
+var runningInNode = true;
+
+// <-NODE
+
+
 exports.parseCaptions = function(captionData, options) {
 	// Be liberal in what you accept from others...
 	options = options instanceof Object ? options : {};
@@ -54,17 +73,13 @@ exports.parseCaptions = function(captionData, options) {
 			};
 			
 			// Process out special cue spans
-			cueSplit = inputHTML
-						.split(/(<\/?[^>]+>)/ig)
-						.filter(function(cuePortionText) {
-							return !!cuePortionText.replace(/\s*/ig,"");
-						});
+			cueSplit = inputHTML.split(/(<\/?[^>]+>)/ig);
 			
 			currentContext = cueStructure;
 			for (splitIndex in cueSplit) {
 				if (cueSplit.hasOwnProperty(splitIndex)) {
 					currentToken = cueSplit[splitIndex];
-				
+					
 					if (currentToken.substr(0,1) === "<") {
 						if (currentToken.substr(1,1) === "/") {
 							// Closing tag

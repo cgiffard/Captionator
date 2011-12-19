@@ -1,3 +1,9 @@
+// NODE->
+var captionator = {};
+captionator.CaptionatorCueStructure = require("./captionator.class.cuestructure.js").CaptionatorCueStructure;
+captionator.TextTrack = require("./captionator.class.texttrack.js").TextTrack;
+// <-NODE
+
 /**
 * @constructor
 */
@@ -140,3 +146,7 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 	this.onenter = function() {};
 	this.onexit = function() {};
 };
+
+// NODE->
+exports.TextTrackCue = captionator.TextTrackCue;
+// <-NODE
