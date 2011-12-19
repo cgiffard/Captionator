@@ -98,6 +98,8 @@ file("build",[],function() {
 	// Get all the copyright headers in
 	buildBuffer += combine(copyright,0);
 	globalCopyright = combine(copyright,0);
+	
+	buildBuffer += "\n/* Build date: " + (new Date()) + " */\n\n";
 
 	// Start closure
 	buildBuffer += "(function(){\n";

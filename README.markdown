@@ -231,7 +231,7 @@ If you use a Mac, and Safari, autobuild.pl is a little script which monitors the
 ./autobuild.pl
 ```
 
-#### Notes about newer browsers
+### Notes about newer browsers
 
 As browers start to implement WebVTT and the TextTrack JS API, Captionator.js will step back and your captions will be delivered by the native capabilities of those browsers.
 In some cases though, the implementations are buggy or incomplete. Currently, both IE10's and Chrome's WebVTT & JS API implementations are incomplete. Captionator.js will not
