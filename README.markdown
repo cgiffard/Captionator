@@ -176,6 +176,7 @@ The following lists options which you can pass to captionator:
 * `debugMode` (Boolean) - If true, draws a canvas with debugging information for cue positioning on top (in z-space) of the video. The canvas displays `vertical`, `vertical-lr`, and `horizontal` line divisions, as well as Captionator's own understanding of the available cue area (post cue-rendering.) This option is not available in the minified builds of Captionator.
 * `appendCueCanvasTo` (HTMLElement | DOM Query as string) - Defines a node in the document within which Captionator should render the video cues. This function is intended to allow you to create a wrapper div and have Captionator render cues within it - hopefully easing the process of making a custom video player. If successful, and Captionator is able to find the wrapper node based on your input, it will set the `top` and `left` values of its own cue canvas to zero, rather than finding the offset position of the video element itself, and append its cue canvas within the wrapper when rendering. If the query fails, the cue canvas will be appended to the body as normal, and positioned using the offset position of the video element.
 * `enableHighResolution` (Boolean) - If true, Captionator sets up a 20ms timer for refreshing cues and captions, firing much more rapidly than the default `timeupdate` event listener on the video element. This option causes Captionator to use a lot more of the user's CPU time - only use this if you have a real need for quick, <250ms response times. This option defaults to false.
+* `forceCaptionify` (Boolean) - If true, Captionator will ignore checks for native TextTrack support in browsers and press on ahead anyway. It will also not fail if the element/s to be captioned are not videos. If you're not sure about this, **DO NOT** enable this option. It will only create more bugs. Do not enable in production.
 
 #### Styling Options ####
 * `minimumFontSize` (Float) - Defines the minimum allowable font size with which Captionator will render cues (in points.) Defaults to 10pt.
@@ -229,6 +230,20 @@ If you use a Mac, and Safari, autobuild.pl is a little script which monitors the
 ```sh
 ./autobuild.pl
 ```
+
+#### Notes about newer browsers
+
+As browers start to implement WebVTT and the TextTrack JS API, Captionator.js will step back and your captions will be delivered by the native capabilities of those browsers.
+In some cases though, the implementations are buggy or incomplete. Currently, both IE10's and Chrome's WebVTT & JS API implementations are incomplete. Captionator.js will not
+run in these browsers. Instead, it quietly quits. You can detect whether this is the case by checking for a `false` return value from the `captionator.captionify()` function.
+
+Currently, Chrome's implementation of TextTracks breaks Captionator, but doesn't actually work on its own yet. I advise that you turn off TextTrack support in `chrome://flags`.
+
+IE10's implementation is not complete, but it does work.
+
+If you understand that you'll probably break things but want to try it anyway, you can disable Captionator's TextTrack support checking by setting the `forceCaptionify` option
+to `true`.
+
 
 New Features
 ---------------

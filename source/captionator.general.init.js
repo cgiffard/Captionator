@@ -51,14 +51,14 @@ captionator.captionify = function(element,defaultLanguage,options) {
 	/* Feature detection block */
 	// VirtualMediaContainer is an element designed to provide a media interface to Captionator
 	// where the browser doesn't support native HTML5 video (it might wrap a flash movie, for example)
-	if (!HTMLVideoElement && !(element instanceof VirtualMediaContainer) ) {
+	if (!HTMLVideoElement && !(element instanceof VirtualMediaContainer) && !options.forceCaptionify) {
 		// Browser doesn't support HTML5 video - die here.
 		return false;
 	}
 	
 	// Browser supports native track API
 	// This should catch Chrome latest and IE10.
-	if (typeof(document.createElement("video").addTextTrack) === "function" || typeof(document.createElement("video").addTrack) === "function") {
+	if ((typeof(document.createElement("video").addTextTrack) === "function" || typeof(document.createElement("video").addTrack) === "function") && !options.forceCaptionify) {
 		return false;
 	}
 	
