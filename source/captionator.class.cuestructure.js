@@ -45,7 +45,7 @@ captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource
 										
 									} else if (currentTimestamp < cueChunk.timeIn) {
 										// Deliver tag hidden, with future class
-										compositeHTML +="<span class='webvtt-span webvtt-timestamp-span webvtt-cue-future' style='opacity: 0;' " +
+										compositeHTML +="<span class='webvtt-span webvtt-timestamp-span webvtt-cue-future' aria-hidden='true' style='opacity: 0;' " +
 														"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
 														processLayer(cueChunk.children,depth+1) +
 														"</span>";

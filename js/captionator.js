@@ -11,7 +11,7 @@
 /*Tab indented, tab = 4 spaces*/
 
 
-/* Build date: Fri Feb 10 2012 11:34:27 GMT+1100 (EST) */
+/* Build date: Fri Feb 10 2012 16:32:17 GMT+1100 (EST) */
 
 (function(){
 	"use strict";
@@ -72,7 +72,7 @@
 											
 										} else if (currentTimestamp < cueChunk.timeIn) {
 											// Deliver tag hidden, with future class
-											compositeHTML +="<span class='webvtt-span webvtt-timestamp-span webvtt-cue-future' style='opacity: 0;' " +
+											compositeHTML +="<span class='webvtt-span webvtt-timestamp-span webvtt-cue-future' aria-hidden='true' style='opacity: 0;' " +
 															"data-timestamp='" + cueChunk.token + "' data-timestamp-seconds='" + cueChunk.timeIn + "'>" +
 															processLayer(cueChunk.children,depth+1) +
 															"</span>";
@@ -616,7 +616,7 @@
 		// Determine whether cues have changed - we generate an ID based on track ID, cue ID, and text length
 		activeCueIDs = compositeActiveCues.map(function(cue) {return cue.track.id + "." + cue.id + ":" + cue.text.toString(currentTime).length;});
 		cuesChanged = !captionator.compareArray(activeCueIDs,videoElement._captionator_previousActiveCues);
-	
+		
 		// If they've changed, we re-render our cue canvas.
 		if (cuesChanged || videoElement._captionator_dirtyBit) {
 			// If dirty bit was set, it certainly isn't now.
@@ -630,19 +630,81 @@
 			
 			// Get the canvas ready if it isn't already
 			captionator.styleCueCanvas(videoElement);
-			videoElement._containerObject.innerHTML = "";
+			
+			// Clear old nodes from canvas
+			var oldNodes =
+				[].slice.call(videoElement._descriptionContainerObject.getElementsByTagName("div"),0)
+				.concat([].slice.call(videoElement._containerObject.getElementsByTagName("div"),0));
+			
+			oldNodes.forEach(function(node) {
+				// If the cue doesn't think it's active...
+				if (node.cueObject && !node.cueObject.active) {
+					
+					// Mark cue as not rendered
+					node.cueObject.rendered = false;
+					
+					// Delete node reference
+					node.cueObject.domNode = null;
+					
+					// Delete node
+					node.parentElement.removeChild(node);
+				}
+			});
 		
 			// Now we render the cues
 			compositeActiveCues.forEach(function(cue) {
-				var cueNode = document.createElement("div");
-				var cueInner = document.createElement("span");
-				cueInner.className = "captionator-cue-inner";
-				cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
-				cueNode.className = "captionator-cue";
-				cueNode.appendChild(cueInner);
-				cueInner.innerHTML = cue.text.toString(currentTime);
-				videoElement._containerObject.appendChild(cueNode);
-				captionator.styleCue(cueNode,cue,videoElement);
+				var cueNode, cueInner;
+				
+				if (!cue.rendered && cue.track.kind !== "metadata") {
+					// Create, ID, and Class all the bits
+					cueNode = document.createElement("div");
+					cueInner = document.createElement("span");
+					cueInner.className = "captionator-cue-inner";
+					cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
+					cueNode.className = "captionator-cue";
+					cueNode.appendChild(cueInner);
+					cueNode.cueObject = cue;
+					cue.domNode = cueNode;
+					
+					// Set the language
+					// Will eventually move to a cue-granular method of specifying language
+					cueNode.setAttribute("lang",cue.track.language);
+					
+					// Plonk the cue contents in
+					cueNode.currentText = cue.text.toString(currentTime);
+					cueInner.innerHTML = cueNode.currentText;
+					
+					// Mark cue as rendered
+					cue.rendered = true;
+				
+					if (cue.track.kind === "descriptions") {
+						// Append descriptions to the hidden descriptive canvas instead
+						// No styling required for these.
+						videoElement._descriptionContainerObject.appendChild(cueNode);
+					} else {
+						// Append everything else to the main cue canvas.
+						videoElement._containerObject.appendChild(cueNode);
+					}
+					
+				} else {
+					// If the cue is already rendered, get the node out
+					cueNode = cue.domNode;
+					cueInner = cueNode.getElementsByClassName("captionator-cue-inner")[0];
+					
+					// But first check it to determine whether its own content has changed
+					if (cue.text.toString(currentTime) !== cueNode.currentText) {
+						cueNode.currentText = cue.text.toString(currentTime); 
+						cueInner.innerHTML = cueNode.currentText;
+						
+						// Reset spanning pointer to maintain our layout
+						cueInner.spanified = false;
+					}
+				}
+				
+				if (cue.track.kind !== "descriptions" && cue.track.kind !== "metadata") {
+					// Re-style cue...
+					captionator.styleCue(cueNode,cue,videoElement);
+				}
 			});
 		}
 	};
@@ -1514,23 +1576,14 @@
 		var maxCueSize = 100, internalTextPosition = 50, textBoundingBoxWidth = 0, textBoundingBoxPercentage = 0, autoSize = true;
 		var plainCueText = "", plainCueTextContainer;
 		
-		// If this is a description cue, we don't need to style it.
-		if (cueObject.track.kind === "descriptions") {
-			captionator.applyStyles(DOMNode,{
-				"position": "absolute",
-				"overflow": "hidden",
-				"width": "1px",
-				"height": "1px",
-				"opacity": "0",
-				"textIndent": "-999em"
-			});
-			
-			return true;
-		}
+		// In future, support cue-granular language detection method
+		var cueLanguage = cueObject.track.language;
 		
 		// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 		// (sadly, all the good ones!)
 		var spanify = function(DOMNode) {
+			if (DOMNode.spanified) return DOMNode.characterCount;
+			
 			var stringHasLength = function(textString) { return !!textString.length; };
 			var spanCode = "<span class='captionator-cue-character'>";
 			var nodeIndex, currentNode, currentNodeValue, replacementFragment, characterCount = 0;
@@ -1546,7 +1599,7 @@
 			};
 			
 			for (nodeIndex in DOMNode.childNodes) {
-				if (DOMNode.childNodes.hasOwnProperty(nodeIndex)) {
+				if (DOMNode.childNodes.hasOwnProperty(nodeIndex) && !DOMNode.childNodes[nodeIndex].nospan) {
 					currentNode = DOMNode.childNodes[nodeIndex];
 					if (currentNode.nodeType === 3) {
 						replacementFragment = document.createDocumentFragment();
@@ -1570,6 +1623,11 @@
 					}
 				}
 			}
+			
+			// We have to know when we've already split this thing up into spans,
+			// so we don't end up creating more and more sub-spans when we restyle the node
+			DOMNode.characterCount = characterCount;
+			DOMNode.spanified = true;
 			
 			return characterCount;
 		};
@@ -1771,20 +1829,24 @@
 			});
 			
 			// Get the plain cue text
-			plainCueText = cueObject.text.getPlain(videoElement.currentTime);
-			plainCueTextContainer = document.createElement("div");
-			plainCueTextContainer.innerHTML = plainCueText;
-			DOMNode.appendChild(plainCueTextContainer);
+			if (!DOMNode.accessified) {
+				plainCueText = cueObject.text.getPlain(videoElement.currentTime);
+				plainCueTextContainer = document.createElement("div");
+				plainCueTextContainer.innerHTML = plainCueText;
+				plainCueTextContainer.nospan = true;
+				DOMNode.appendChild(plainCueTextContainer);
+				DOMNode.accessified = true;
 			
-			// Now hide it. Don't want it interfering with cue display
-			captionator.applyStyles(plainCueTextContainer,{
-				"position": "absolute",
-				"overflow": "hidden",
-				"width": "1px",
-				"height": "1px",
-				"opacity": "0",
-				"textIndent": "-999em"
-			});
+				// Now hide it. Don't want it interfering with cue display
+				captionator.applyStyles(plainCueTextContainer,{
+					"position": "absolute",
+					"overflow": "hidden",
+					"width": "1px",
+					"height": "1px",
+					"opacity": "0",
+					"textIndent": "-999em"
+				});
+			}
 		}
 		
 		if (cueObject.direction === "horizontal") {
@@ -1992,8 +2054,8 @@
 	*/
 	captionator.styleCueCanvas = function(videoElement) {
 		var baseFontSize, baseLineHeight;
-		var containerObject;
-		var containerID;
+		var containerObject, descriptionContainerObject;
+		var containerID, descriptionContainerID;
 		var options = videoElement._captionatorOptions instanceof Object ? videoElement._captionatorOptions : {};
 	
 		if (!(videoElement instanceof HTMLVideoElement)) {
@@ -2003,6 +2065,38 @@
 		if (videoElement._containerObject) {
 			containerObject = videoElement._containerObject;
 			containerID = containerObject.id;
+		}
+		
+		if (videoElement._descriptionContainerObject) {
+			descriptionContainerObject = videoElement._descriptionContainerObject;
+			descriptionContainerID = descriptionContainerObject.id;
+		}
+		
+		if (!descriptionContainerID) {
+			// Contain hidden descriptive captions
+			descriptionContainerObject = document.createElement("div");
+			descriptionContainerObject.className = "captionator-cue-descriptive-container";
+			descriptionContainerID = captionator.generateID();
+			descriptionContainerObject.id = descriptionContainerID;
+			videoElement._descriptionContainerObject = descriptionContainerObject;
+			
+			// ARIA LIVE for descriptive text
+			descriptionContainerObject.setAttribute("aria-live","polite");
+			descriptionContainerObject.setAttribute("aria-atomic","true");
+			descriptionContainerObject.setAttribute("role","region");
+			
+			// Stick it in the body
+			document.body.appendChild(descriptionContainerObject);
+			
+			// Hide the descriptive canvas...
+			captionator.applyStyles(descriptionContainerObject,{
+				"position": "absolute",
+				"overflow": "hidden",
+				"width": "1px",
+				"height": "1px",
+				"opacity": "0",
+				"textIndent": "-999em"
+			});
 		}
 	
 		if (!containerObject) {
@@ -2046,20 +2140,12 @@
 			}
 	
 			videoElement._containerObject = containerObject;
-			// TODO(silvia): we should only do aria-live on descriptions and that doesn't need visual display
-			containerObject.setAttribute("aria-live","polite");
-			containerObject.setAttribute("aria-atomic","true");
-			containerObject.setAttribute("aria-relevant","text");
-			containerObject.setAttribute("role","region");
+			
+			// No aria live, as descriptions aren't placed in this container.
+			// containerObject.setAttribute("role","region");
 			
 		} else if (!containerObject.parentNode) {
 			document.body.appendChild(containerObject);
-		}
-	
-		// TODO(silvia): we should not really muck with the aria-describedby attribute of the video
-		if (String(videoElement.getAttribute("aria-describedby")).indexOf(containerID) === -1) {
-			var existingValue = videoElement.hasAttribute("aria-describedby") ? videoElement.getAttribute("aria-describedby") + " " : "";
-			videoElement.setAttribute("aria-describedby",existingValue + containerID);
 		}
 	
 		// Set up the cue canvas
