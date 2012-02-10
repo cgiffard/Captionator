@@ -1,4 +1,3 @@
-
 /*
 	Captionator 0.6 [CaptionPlanet]
 	Christopher Giffard, 2011
