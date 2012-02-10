@@ -11,7 +11,7 @@
 /*Tab indented, tab = 4 spaces*/
 
 
-/* Build date: Fri Feb 10 2012 16:32:17 GMT+1100 (EST) */
+/* Build date: Fri Feb 10 2012 16:41:48 GMT+1100 (EST) */
 
 (function(){
 	"use strict";
@@ -2072,7 +2072,7 @@
 			descriptionContainerID = descriptionContainerObject.id;
 		}
 		
-		if (!descriptionContainerID) {
+		if (!descriptionContainerObject) {
 			// Contain hidden descriptive captions
 			descriptionContainerObject = document.createElement("div");
 			descriptionContainerObject.className = "captionator-cue-descriptive-container";
@@ -2097,6 +2097,8 @@
 				"opacity": "0",
 				"textIndent": "-999em"
 			});
+		} else if (!descriptionContainerObject.parentNode) {
+			document.body.appendChild(descriptionContainerObject);
 		}
 	
 		if (!containerObject) {

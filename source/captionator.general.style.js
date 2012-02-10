@@ -637,7 +637,7 @@ captionator.styleCueCanvas = function(videoElement) {
 		descriptionContainerID = descriptionContainerObject.id;
 	}
 	
-	if (!descriptionContainerID) {
+	if (!descriptionContainerObject) {
 		// Contain hidden descriptive captions
 		descriptionContainerObject = document.createElement("div");
 		descriptionContainerObject.className = "captionator-cue-descriptive-container";
@@ -662,6 +662,8 @@ captionator.styleCueCanvas = function(videoElement) {
 			"opacity": "0",
 			"textIndent": "-999em"
 		});
+	} else if (!descriptionContainerObject.parentNode) {
+		document.body.appendChild(descriptionContainerObject);
 	}
 
 	if (!containerObject) {
