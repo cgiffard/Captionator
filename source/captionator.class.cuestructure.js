@@ -77,6 +77,45 @@ captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource
 			return cueSource;
 		}
 	};
+	
+	// Now you can get the plain text out of CaptionatorCueStructure.
+	// Runs through the parse tree, ignoring tags and just returning the inner text.
+	// If you've got processCueHTML explicitly set to false, then it removes HTML tags from the
+	// result using a regex.
+	
+	this.getPlain = function(currentTimestamp) {
+		if (options.processCueHTML !== false) {
+			var processLayer = function(layerObject,depth) {
+				var compositePlain = "", itemIndex, cueChunk;
+				for (itemIndex in layerObject) {
+					if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
+						// We're not a prototype function or local property, and we're in range
+						cueChunk = layerObject[itemIndex];
+						// Don't generate text from the token if it has no contents
+						if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
+							if (cueChunk.timeIn > 0) {
+								// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
+								if ((currentTimestamp === null || currentTimestamp === undefined) ||
+									(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
+								
+									compositePlain += processLayer(cueChunk.children,depth+1);
+								}
+							} else {
+								compositePlain += processLayer(cueChunk.children,depth+1);
+							}
+						} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
+							compositePlain += cueChunk;
+						}
+					}
+				}
+				
+				return compositePlain;
+			};
+			return processLayer(this,0);
+		} else {
+			return cueSource.replace(/<[^>]*>/ig,"");;
+		}
+	}
 };
 captionator.CaptionatorCueStructure.prototype = [];
 

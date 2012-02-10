@@ -139,6 +139,21 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 	var options = videoElement._captionatorOptions || {};
 	var videoMetrics;
 	var maxCueSize = 100, internalTextPosition = 50, textBoundingBoxWidth = 0, textBoundingBoxPercentage = 0, autoSize = true;
+	var plainCueText = "", plainCueTextContainer;
+	
+	// If this is a description cue, we don't need to style it.
+	if (cueObject.track.kind === "descriptions") {
+		captionator.applyStyles(DOMNode,{
+			"position": "absolute",
+			"overflow": "hidden",
+			"width": "1px",
+			"height": "1px",
+			"opacity": "0",
+			"textIndent": "-999em"
+		});
+		
+		return true;
+	}
 	
 	// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 	// (sadly, all the good ones!)
@@ -363,8 +378,9 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 				characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
 			}
 			
-			// Because these are positioned absolute, screen readers don't read them properly.
-			// Each of the characters is set to be ignored, and the entire text is applied to the aria-label attribute instead.
+			// Because these are positioned absolutely, screen readers don't read them properly.
+			// Each of the characters is set to be ignored, and the entire text is duplicated in a hidden element to ensure
+			// it is read correctly.
 			characterSpan.setAttribute("aria-hidden","true");
 
 			captionator.applyStyles(characterSpan,{
@@ -379,6 +395,22 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 			} else {
 				characterPosition ++;
 			}
+		});
+		
+		// Get the plain cue text
+		plainCueText = cueObject.text.getPlain(videoElement.currentTime);
+		plainCueTextContainer = document.createElement("div");
+		plainCueTextContainer.innerHTML = plainCueText;
+		DOMNode.appendChild(plainCueTextContainer);
+		
+		// Now hide it. Don't want it interfering with cue display
+		captionator.applyStyles(plainCueTextContainer,{
+			"position": "absolute",
+			"overflow": "hidden",
+			"width": "1px",
+			"height": "1px",
+			"opacity": "0",
+			"textIndent": "-999em"
 		});
 	}
 	
@@ -645,6 +677,8 @@ captionator.styleCueCanvas = function(videoElement) {
 		containerObject.setAttribute("aria-live","polite");
 		containerObject.setAttribute("aria-atomic","true");
 		containerObject.setAttribute("aria-relevant","text");
+		containerObject.setAttribute("role","region");
+		
 	} else if (!containerObject.parentNode) {
 		document.body.appendChild(containerObject);
 	}
