@@ -11,7 +11,7 @@
 /*Tab indented, tab = 4 spaces*/
 
 
-/* Build date: Wed Feb 01 2012 15:01:15 GMT+1100 (EST) */
+/* Build date: Fri Feb 10 2012 11:34:27 GMT+1100 (EST) */
 
 (function(){
 	"use strict";
@@ -102,6 +102,45 @@
 				return processLayer(this,0);
 			} else {
 				return cueSource;
+			}
+		};
+		
+		// Now you can get the plain text out of CaptionatorCueStructure.
+		// Runs through the parse tree, ignoring tags and just returning the inner text.
+		// If you've got processCueHTML explicitly set to false, then it removes HTML tags from the
+		// result using a regex.
+		
+		this.getPlain = function(currentTimestamp) {
+			if (options.processCueHTML !== false) {
+				var processLayer = function(layerObject,depth) {
+					var compositePlain = "", itemIndex, cueChunk;
+					for (itemIndex in layerObject) {
+						if (itemIndex.match(/^\d+$/) && layerObject.hasOwnProperty(itemIndex)) {
+							// We're not a prototype function or local property, and we're in range
+							cueChunk = layerObject[itemIndex];
+							// Don't generate text from the token if it has no contents
+							if (cueChunk instanceof Object && cueChunk.children && cueChunk.children.length) {
+								if (cueChunk.timeIn > 0) {
+									// If a timestamp is unspecified, or the timestamp suggests this token is valid to display, return it
+									if ((currentTimestamp === null || currentTimestamp === undefined) ||
+										(currentTimestamp > 0 && currentTimestamp >= cueChunk.timeIn)) {
+									
+										compositePlain += processLayer(cueChunk.children,depth+1);
+									}
+								} else {
+									compositePlain += processLayer(cueChunk.children,depth+1);
+								}
+							} else if (cueChunk instanceof String || typeof(cueChunk) === "string" || typeof(cueChunk) === "number") {
+								compositePlain += cueChunk;
+							}
+						}
+					}
+					
+					return compositePlain;
+				};
+				return processLayer(this,0);
+			} else {
+				return cueSource.replace(/<[^>]*>/ig,"");
 			}
 		};
 	};
@@ -1473,6 +1512,21 @@
 		var options = videoElement._captionatorOptions || {};
 		var videoMetrics;
 		var maxCueSize = 100, internalTextPosition = 50, textBoundingBoxWidth = 0, textBoundingBoxPercentage = 0, autoSize = true;
+		var plainCueText = "", plainCueTextContainer;
+		
+		// If this is a description cue, we don't need to style it.
+		if (cueObject.track.kind === "descriptions") {
+			captionator.applyStyles(DOMNode,{
+				"position": "absolute",
+				"overflow": "hidden",
+				"width": "1px",
+				"height": "1px",
+				"opacity": "0",
+				"textIndent": "-999em"
+			});
+			
+			return true;
+		}
 		
 		// Function to facilitate vertical text alignments in browsers which do not support writing-mode
 		// (sadly, all the good ones!)
@@ -1697,8 +1751,9 @@
 					characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
 				}
 				
-				// Because these are positioned absolute, screen readers don't read them properly.
-				// Each of the characters is set to be ignored, and the entire text is applied to the aria-label attribute instead.
+				// Because these are positioned absolutely, screen readers don't read them properly.
+				// Each of the characters is set to be ignored, and the entire text is duplicated in a hidden element to ensure
+				// it is read correctly.
 				characterSpan.setAttribute("aria-hidden","true");
 	
 				captionator.applyStyles(characterSpan,{
@@ -1713,6 +1768,22 @@
 				} else {
 					characterPosition ++;
 				}
+			});
+			
+			// Get the plain cue text
+			plainCueText = cueObject.text.getPlain(videoElement.currentTime);
+			plainCueTextContainer = document.createElement("div");
+			plainCueTextContainer.innerHTML = plainCueText;
+			DOMNode.appendChild(plainCueTextContainer);
+			
+			// Now hide it. Don't want it interfering with cue display
+			captionator.applyStyles(plainCueTextContainer,{
+				"position": "absolute",
+				"overflow": "hidden",
+				"width": "1px",
+				"height": "1px",
+				"opacity": "0",
+				"textIndent": "-999em"
 			});
 		}
 		
@@ -1979,6 +2050,8 @@
 			containerObject.setAttribute("aria-live","polite");
 			containerObject.setAttribute("aria-atomic","true");
 			containerObject.setAttribute("aria-relevant","text");
+			containerObject.setAttribute("role","region");
+			
 		} else if (!containerObject.parentNode) {
 			document.body.appendChild(containerObject);
 		}

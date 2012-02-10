@@ -113,9 +113,9 @@ captionator.CaptionatorCueStructure = function CaptionatorCueStructure(cueSource
 			};
 			return processLayer(this,0);
 		} else {
-			return cueSource.replace(/<[^>]*>/ig,"");;
+			return cueSource.replace(/<[^>]*>/ig,"");
 		}
-	}
+	};
 };
 captionator.CaptionatorCueStructure.prototype = [];
 
