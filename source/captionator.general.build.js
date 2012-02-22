@@ -84,55 +84,59 @@ captionator.rebuildCaptions = function(videoElement) {
 		compositeActiveCues.forEach(function(cue) {
 			var cueNode, cueInner;
 			
-			if (!cue.rendered && cue.track.kind !== "metadata") {
-				// Create, ID, and Class all the bits
-				cueNode = document.createElement("div");
-				cueInner = document.createElement("span");
-				cueInner.className = "captionator-cue-inner";
-				cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
-				cueNode.className = "captionator-cue";
-				cueNode.appendChild(cueInner);
-				cueNode.cueObject = cue;
-				cue.domNode = cueNode;
-				
-				// Set the language
-				// Will eventually move to a cue-granular method of specifying language
-				cueNode.setAttribute("lang",cue.track.language);
-				
-				// Plonk the cue contents in
-				cueNode.currentText = cue.text.toString(currentTime);
-				cueInner.innerHTML = cueNode.currentText;
-				
-				// Mark cue as rendered
-				cue.rendered = true;
+			if (cue.track.kind !== "metadata" && cue.mode !== captionator.TextTrack.HIDDEN) {
 			
-				if (cue.track.kind === "descriptions") {
-					// Append descriptions to the hidden descriptive canvas instead
-					// No styling required for these.
-					videoElement._descriptionContainerObject.appendChild(cueNode);
-				} else {
-					// Append everything else to the main cue canvas.
-					videoElement._containerObject.appendChild(cueNode);
-				}
+				if (!cue.rendered) {
+					// Create, ID, and Class all the bits
+					cueNode = document.createElement("div");
+					cueInner = document.createElement("span");
+					cueInner.className = "captionator-cue-inner";
+					cueNode.id = String(cue.id).length ? cue.id : captionator.generateID();
+					cueNode.className = "captionator-cue";
+					cueNode.appendChild(cueInner);
+					cueNode.cueObject = cue;
+					cue.domNode = cueNode;
 				
-			} else {
-				// If the cue is already rendered, get the node out
-				cueNode = cue.domNode;
-				cueInner = cueNode.getElementsByClassName("captionator-cue-inner")[0];
+					// Set the language
+					// Will eventually move to a cue-granular method of specifying language
+					cueNode.setAttribute("lang",cue.track.language);
 				
-				// But first check it to determine whether its own content has changed
-				if (cue.text.toString(currentTime) !== cueNode.currentText) {
-					cueNode.currentText = cue.text.toString(currentTime); 
+					// Plonk the cue contents in
+					cueNode.currentText = cue.text.toString(currentTime);
 					cueInner.innerHTML = cueNode.currentText;
-					
-					// Reset spanning pointer to maintain our layout
-					cueInner.spanified = false;
-				}
-			}
+				
+					// Mark cue as rendered
+					cue.rendered = true;
 			
-			if (cue.track.kind !== "descriptions" && cue.track.kind !== "metadata") {
-				// Re-style cue...
-				captionator.styleCue(cueNode,cue,videoElement);
+					if (cue.track.kind === "descriptions") {
+						// Append descriptions to the hidden descriptive canvas instead
+						// No styling required for these.
+						videoElement._descriptionContainerObject.appendChild(cueNode);
+					} else {
+						// Append everything else to the main cue canvas.
+						videoElement._containerObject.appendChild(cueNode);
+					}
+				
+				} else {
+				
+					// If the cue is already rendered, get the node out
+					cueNode = cue.domNode;
+					cueInner = cueNode.getElementsByClassName("captionator-cue-inner")[0];
+				
+					// But first check it to determine whether its own content has changed
+					if (cue.text.toString(currentTime) !== cueNode.currentText) {
+						cueNode.currentText = cue.text.toString(currentTime); 
+						cueInner.innerHTML = cueNode.currentText;
+					
+						// Reset spanning pointer to maintain our layout
+						cueInner.spanified = false;
+					}
+				}
+			
+				if (cue.track.kind !== "descriptions") {
+					// Re-style cue...
+					captionator.styleCue(cueNode,cue,videoElement);
+				}
 			}
 		});
 	}
