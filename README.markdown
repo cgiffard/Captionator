@@ -207,7 +207,6 @@ Thanks
 ----------------
 Thanks to @silviapfeiffer for her knowledge and assistance with some of the hairier aspects of these specifications! Thanks also to @ourmaninjapan for his welcome assistance with Japanese text/line breaking algorithms!
 
-
 Licence
 ----------------
 
