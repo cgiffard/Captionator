@@ -101,21 +101,21 @@
 		
 			RETURNS:
 		  
-            Time format expressed as HH:MM:SS.mmm where
+			Time format expressed as HH:MM:SS.mmm where
 			HH - hours
 			MM - minutes
 			SS - seconds
 			mmm - milliseconds
 		*/
 		"secondsToHmsm": function secondsToHms(totalSeconds) {
-            var hours = parseInt( totalSeconds / 3600 ) % 24;
-            var minutes = parseInt( totalSeconds / 60 ) % 60;
-            var seconds = (totalSeconds % 60).toFixed(3);
-            
-            // Return result of type HH:MM:SS.mmm
-            return "".concat((hours < 10 ? "0" + hours : hours), ":", (minutes < 10 ? "0" + minutes : minutes), ":", (seconds  < 10 ? "0" + seconds : seconds));
-        },
-        /*
+			var hours = parseInt( totalSeconds / 3600 ) % 24;
+			var minutes = parseInt( totalSeconds / 60 ) % 60;
+			var seconds = (totalSeconds % 60).toFixed(3);
+			
+			// Return result of type HH:MM:SS.mmm
+			return "".concat((hours < 10 ? "0" + hours : hours), ":", (minutes < 10 ? "0" + minutes : minutes), ":", (seconds  < 10 ? "0" + seconds : seconds));
+		},
+		/*
 			captionator.unisubJSONtoWebVTT(jsonData)
 		
 			Function which comverts Universal Subtitles JSON format into acceptable captionator WebVTT format 		
@@ -124,29 +124,29 @@
 		
 			RETURNS:
 		  
-            A properly formatted WebVTT format used in captions
+			A properly formatted WebVTT format used in captions
 		*/
-        "unisubJSONtoWebVTT": function unisubJSONtoWebVTT(jsonData) {
-            var vttData = "WEBVTT";
-            var vttChunk = "";
-            
-            for(var i=0; i < jsonData.length; i++) {
-                var jsonpObj = jsonData[i];
-                var startTime = captionator.secondsToHmsm(jsonpObj.start_time);
-                var endTime = captionator.secondsToHmsm(jsonpObj.end_time);
-                
-                // Generate a vtt chunk of type
-                //
-                //
-                // N
-                // HH:MM:SS.mmm --> HH:MM:SS.mmm
-                // Some caption text here
-                vttData = vttData.concat("\n\n", jsonpObj.sub_order, "\n", startTime, " --> ", endTime, "\n", jsonpObj.text);
-            }
-            
-            return vttData;
-        },
-        /*
+		"unisubJSONtoWebVTT": function unisubJSONtoWebVTT(jsonData) {
+			var vttData = "WEBVTT";
+			var vttChunk = "";
+			
+			for(var i=0; i < jsonData.length; i++) {
+				var jsonpObj = jsonData[i];
+				var startTime = captionator.secondsToHmsm(jsonpObj.start_time);
+				var endTime = captionator.secondsToHmsm(jsonpObj.end_time);
+				
+				// Generate a vtt chunk of type
+				//
+				//
+				// N
+				// HH:MM:SS.mmm --> HH:MM:SS.mmm
+				// Some caption text here
+				vttData = vttData.concat("\n\n", jsonpObj.sub_order, "\n", startTime, " --> ", endTime, "\n", jsonpObj.text);
+			}
+			
+			return vttData;
+		},
+		/*
 			captionator.getJSONP(URL, success)
 		
 			Function to get jsonp cross domain by injecting a website with a data passed as an argument into the callback 		
@@ -159,21 +159,21 @@
 		
 			RETURNS:
 		  
-            Nothing
+			Nothing
 		*/
-        "getJSONP": function getJSONP(URL, success) {
-            // Generate a random name for the callback function
-            var ud = 'json'+(Math.random()*100).toString().replace(/\./g,'');
-            window[ud]= function(o){
-                success&&success(o);
-            };
-            
-            document.getElementsByTagName('body')[0].appendChild((function(){
-                var s = document.createElement('script');
-                s.type = 'text/javascript';
-                s.src = URL.replace('callback=?','callback=' + ud);
-                return s;
-            })());
+		"getJSONP": function getJSONP(URL, success) {
+			// Generate a random name for the callback function
+			var ud = 'json'+(Math.random()*100).toString().replace(/\./g,'');
+			window[ud]= function(o){
+				success&&success(o);
+			};
+			
+			document.getElementsByTagName('body')[0].appendChild((function(){
+				var s = document.createElement('script');
+				s.type = 'text/javascript';
+				s.src = URL.replace('callback=?','callback=' + ud);
+				return s;
+			})());
 		},
 		/*
 			captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback)
@@ -188,7 +188,7 @@
 		
 			RETURNS:
 		  
-            Nothing
+			Nothing
 		*/
 		"loadTrackWebVTTCaptions": function loadTrackWebVTTCaptions(data, currentTrackElement, callback) {
 		    var captionData, TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
@@ -358,37 +358,37 @@
 							
 							// Check if the currentTrack is jsonp one then we need to get caption JSON from the provided URL
 							if (this.type.match(/^jsonp\//)) {
-				                captionator.getJSONP("".concat(source, "&callback=?"), function(data){
-				                    if(data && data.length > 0) {
-                                        // Covert JSON to accepted VTT format
-                                        data = captionator.unisubJSONtoWebVTT(data);
-                                        captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback);
-                                    } else {
-                                        currentTrackElement.readyState = captionator.TextTrack.ERROR;
-                                    }
-				                });
+								captionator.getJSONP("".concat(source, "&callback=?"), function(data){
+									if(data && data.length > 0) {
+										// Covert JSON to accepted VTT format
+										data = captionator.unisubJSONtoWebVTT(data);
+										captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback);
+									} else {
+										currentTrackElement.readyState = captionator.TextTrack.ERROR;
+									}
+								});
 							} else {
-    							ajaxObject.open('GET', source, true);
-    							ajaxObject.onreadystatechange = function (eventData) {
-    								if (ajaxObject.readyState === 4) {
-    									if(ajaxObject.status === 200) {
-    										var data = ajaxObject.responseText;
-                                            captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback);
-    									} else {
-    										// Throw error handler, if defined
-    										currentTrackElement.readyState = captionator.TextTrack.ERROR;
-    										currentTrackElement.onerror();
-    									}
-    								}
-    							};
-    							try {
-    								ajaxObject.send(null);
-    							} catch(Error) {
-    								// Throw error handler, if defined
-    								currentTrackElement.readyState = captionator.TextTrack.ERROR;
-    								currentTrackElement.onerror(Error);
-    							}
-    				        }
+								ajaxObject.open('GET', source, true);
+								ajaxObject.onreadystatechange = function (eventData) {
+									if (ajaxObject.readyState === 4) {
+										if(ajaxObject.status === 200) {
+											var data = ajaxObject.responseText;
+											captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback);
+										} else {
+											// Throw error handler, if defined
+											currentTrackElement.readyState = captionator.TextTrack.ERROR;
+											currentTrackElement.onerror();
+										}
+									}
+								};
+								try {
+									ajaxObject.send(null);
+								} catch(Error) {
+									// Throw error handler, if defined
+									currentTrackElement.readyState = captionator.TextTrack.ERROR;
+									currentTrackElement.onerror(Error);
+								}
+							}
 						}
 					};
 				
