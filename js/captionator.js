@@ -93,6 +93,125 @@
 			return "captionator" + idComposite;
 		},
 		/*
+			captionator.secondsToHmsm(totalSeconds)
+		
+			Function which allows to convert time format expressed a total number of seconds into HH:MM:SS.mmm time format used in VTT. 		
+			
+			First parameter: Total number of seconds expressed as a float number
+		
+			RETURNS:
+		  
+            Time format expressed as HH:MM:SS.mmm where
+			HH - hours
+			MM - minutes
+			SS - seconds
+			mmm - milliseconds
+		*/
+		"secondsToHmsm": function secondsToHms(totalSeconds) {
+            var hours = parseInt( totalSeconds / 3600 ) % 24;
+            var minutes = parseInt( totalSeconds / 60 ) % 60;
+            var seconds = (totalSeconds % 60).toFixed(3);
+            
+            // Return result of type HH:MM:SS.mmm
+            return "".concat((hours < 10 ? "0" + hours : hours), ":", (minutes < 10 ? "0" + minutes : minutes), ":", (seconds  < 10 ? "0" + seconds : seconds));
+        },
+        /*
+			captionator.unisubJSONtoWebVTT(jsonData)
+		
+			Function which comverts Universal Subtitles JSON format into acceptable captionator WebVTT format 		
+			
+			First parameter: JSON caption data which we get from http://www.universalsubtitles.org/api/1.0/subtitles/
+		
+			RETURNS:
+		  
+            A properly formatted WebVTT format used in captions
+		*/
+        "unisubJSONtoWebVTT": function unisubJSONtoWebVTT(jsonData) {
+            var vttData = "WEBVTT";
+            var vttChunk = "";
+            
+            for(var i=0; i < jsonData.length; i++) {
+                var jsonpObj = jsonData[i];
+                var startTime = captionator.secondsToHmsm(jsonpObj.start_time);
+                var endTime = captionator.secondsToHmsm(jsonpObj.end_time);
+                
+                // Generate a vtt chunk of type
+                //
+                //
+                // N
+                // HH:MM:SS.mmm --> HH:MM:SS.mmm
+                // Some caption text here
+                vttData = vttData.concat("\n\n", jsonpObj.sub_order, "\n", startTime, " --> ", endTime, "\n", jsonpObj.text);
+            }
+            
+            return vttData;
+        },
+        /*
+			captionator.getJSONP(URL, success)
+		
+			Function to get jsonp cross domain by injecting a website with a data passed as an argument into the callback 		
+			
+			First parameter: URL to the domain which returns a JSONP object with data
+			URL must end with a "callback=?" string.
+			Example: http://www.universalsubtitles.org/api/1.0/subtitles/?video_url=http://www.youtube.com/watch?v=_VxQEPw1x9E&callback=?
+			
+			Second parameter: A callback which will accept returning data as an argument
+		
+			RETURNS:
+		  
+            Nothing
+		*/
+        "getJSONP": function getJSONP(URL, success) {
+            // Generate a random name for the callback function
+            var ud = 'json'+(Math.random()*100).toString().replace(/\./g,'');
+            window[ud]= function(o){
+                success&&success(o);
+            };
+            
+            document.getElementsByTagName('body')[0].appendChild((function(){
+                var s = document.createElement('script');
+                s.type = 'text/javascript';
+                s.src = URL.replace('callback=?','callback=' + ud);
+                return s;
+            })());
+		},
+		/*
+			captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback)
+		
+			Function which loads Captions to the trackElement using passed WebVTT text. This function is here so that we do not have the same code in jsonp and XMLHttpRequest cases
+			
+			First parameter: WebVTT text
+			
+			Second parameter: A trackElement which will have parsed captions
+			
+			Third parameter: A callback
+		
+			RETURNS:
+		  
+            Nothing
+		*/
+		"loadTrackWebVTTCaptions": function loadTrackWebVTTCaptions(data, currentTrackElement, callback) {
+		    var captionData, TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
+			if (currentTrackElement.kind === "metadata") {
+				// People can load whatever data they please into metadata tracks.
+				// Don't process it.
+				TrackProcessingOptions.processCueHTML = false;
+				TrackProcessingOptions.sanitiseCueHTML = false;
+			}
+			
+			captionData = captionator.parseCaptions(data, TrackProcessingOptions);
+			currentTrackElement.readyState = captionator.TextTrack.LOADED;
+			currentTrackElement.cues.loadCues(captionData);
+			currentTrackElement.activeCues.refreshCues.apply(currentTrackElement.activeCues);
+			currentTrackElement.videoNode._captionator_dirtyBit = true;
+			captionator.rebuildCaptions(currentTrackElement.videoNode);
+			currentTrackElement.onload.call(this);
+		
+			if (callback instanceof Function) {
+				callback.call(currentTrackElement, captionData);
+			}
+		},
+		/*
 			captionator.captionify([selector string array | DOMElement array | selector string | singular dom element ],
 									[defaultLanguage - string in BCP47],
 									[options - JS Object])
@@ -159,7 +278,7 @@
 				/**
 				 * @constructor
 				 */
-				captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault) {
+				captionator.TextTrack = function TextTrack(id,kind,label,language,trackSource,isDefault,type) {
 				
 					this.onload = function () {};
 					this.onerror = function() {};
@@ -175,6 +294,7 @@
 					this.src = trackSource || "";
 					this.readyState = captionator.TextTrack.NONE;
 					this.internalDefault = isDefault || false;
+					this.type = type || "";
 				
 					// Create getters and setters for mode
 					this.getMode = function() {
@@ -235,43 +355,40 @@
 							this.readyState = captionator.TextTrack.LOADING;
 						
 							var currentTrackElement = this;
-							ajaxObject.open('GET', source, true);
-							ajaxObject.onreadystatechange = function (eventData) {
-								if (ajaxObject.readyState === 4) {
-									if(ajaxObject.status === 200) {
-										var TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
-										if (currentTrackElement.kind === "metadata") {
-											// People can load whatever data they please into metadata tracks.
-											// Don't process it.
-											TrackProcessingOptions.processCueHTML = false;
-											TrackProcessingOptions.sanitiseCueHTML = false;
-										}
-										
-										captionData = captionator.parseCaptions(ajaxObject.responseText,TrackProcessingOptions);
-										currentTrackElement.readyState = captionator.TextTrack.LOADED;
-										currentTrackElement.cues.loadCues(captionData);
-										currentTrackElement.activeCues.refreshCues.apply(currentTrackElement.activeCues);
-										currentTrackElement.videoNode._captionator_dirtyBit = true;
-										captionator.rebuildCaptions(currentTrackElement.videoNode);
-										currentTrackElement.onload.call(this);
-									
-										if (callback instanceof Function) {
-											callback.call(currentTrackElement,captionData);
-										}
-									} else {
-										// Throw error handler, if defined
-										currentTrackElement.readyState = captionator.TextTrack.ERROR;
-										currentTrackElement.onerror();
-									}
-								}
-							};
-							try {
-								ajaxObject.send(null);
-							} catch(Error) {
-								// Throw error handler, if defined
-								currentTrackElement.readyState = captionator.TextTrack.ERROR;
-								currentTrackElement.onerror(Error);
-							}
+							
+							// Check if the currentTrack is jsonp one then we need to get caption JSON from the provided URL
+							if (this.type.match(/^jsonp\//)) {
+				                captionator.getJSONP("".concat(source, "&callback=?"), function(data){
+				                    if(data && data.length > 0) {
+                                        // Covert JSON to accepted VTT format
+                                        data = captionator.unisubJSONtoWebVTT(data);
+                                        captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback);
+                                    } else {
+                                        currentTrackElement.readyState = captionator.TextTrack.ERROR;
+                                    }
+				                });
+							} else {
+    							ajaxObject.open('GET', source, true);
+    							ajaxObject.onreadystatechange = function (eventData) {
+    								if (ajaxObject.readyState === 4) {
+    									if(ajaxObject.status === 200) {
+    										var data = ajaxObject.responseText;
+                                            captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback);
+    									} else {
+    										// Throw error handler, if defined
+    										currentTrackElement.readyState = captionator.TextTrack.ERROR;
+    										currentTrackElement.onerror();
+    									}
+    								}
+    							};
+    							try {
+    								ajaxObject.send(null);
+    							} catch(Error) {
+    								// Throw error handler, if defined
+    								currentTrackElement.readyState = captionator.TextTrack.ERROR;
+    								currentTrackElement.onerror(Error);
+    							}
+    				        }
 						}
 					};
 				
@@ -796,6 +913,7 @@
 					label = typeof(label) === "string" ? label : "";
 					language = typeof(language) === "string" ? language : "";
 					isDefault = typeof(isDefault) === "boolean" ? isDefault : false; // Is this track set as the default?
+					type = typeof(type) === "string" ? type : "";
 
 					// If the kind isn't known, throw DOM syntax error exception
 					if (!allowedKinds.filter(function (currentKind){
@@ -807,7 +925,7 @@
 					if (textKinds.filter(function (currentKind){
 							return kind === currentKind ? true : false;
 						}).length) {
-						newTrack = new captionator.TextTrack(id,kind,label,language,src,null);
+						newTrack = new captionator.TextTrack(id,kind,label,language,src,null,type);
 						if (newTrack) {
 							if (!(videoElement.tracks instanceof Array)) {
 								videoElement.tracks = [];
