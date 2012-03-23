@@ -107,7 +107,7 @@
 			SS - seconds
 			mmm - milliseconds
 		*/
-		"secondsToHmsm": function secondsToHms(totalSeconds) {
+		"secondsToHmsm": function(totalSeconds) {
 			var hours = parseInt( totalSeconds / 3600 ) % 24;
 			var minutes = parseInt( totalSeconds / 60 ) % 60;
 			var seconds = (totalSeconds % 60).toFixed(3);
@@ -126,14 +126,13 @@
 		  
 			A properly formatted WebVTT format used in captions
 		*/
-		"unisubJSONtoWebVTT": function unisubJSONtoWebVTT(jsonData) {
+		"unisubJSONtoWebVTT": function(jsonData) {
 			var vttData = "WEBVTT";
-			var vttChunk = "";
 			
 			for(var i=0; i < jsonData.length; i++) {
-				var jsonpObj = jsonData[i];
-				var startTime = captionator.secondsToHmsm(jsonpObj.start_time);
-				var endTime = captionator.secondsToHmsm(jsonpObj.end_time);
+				var caption = jsonData[i];
+				var startTime = captionator.secondsToHmsm(caption.start_time);
+				var endTime = captionator.secondsToHmsm(caption.end_time);
 				
 				// Generate a vtt chunk of type
 				//
@@ -141,7 +140,7 @@
 				// N
 				// HH:MM:SS.mmm --> HH:MM:SS.mmm
 				// Some caption text here
-				vttData = vttData.concat("\n\n", jsonpObj.sub_order, "\n", startTime, " --> ", endTime, "\n", jsonpObj.text);
+				vttData = vttData.concat("\n\n", caption.sub_order, "\n", startTime, " --> ", endTime, "\n", caption.text);
 			}
 			
 			return vttData;
@@ -161,19 +160,21 @@
 		  
 			Nothing
 		*/
-		"getJSONP": function getJSONP(URL, success) {
-			// Generate a random name for the callback function
-			var ud = 'json'+(Math.random()*100).toString().replace(/\./g,'');
-			window[ud]= function(o){
-				success&&success(o);
+		"getJSONP": function(URL, callback) {
+            // Generate a random callback function name
+			var callbackName = "json"+(Math.random()*100).toString().replace(/\./g,"");
+			// Attach the function to the global namespace
+			window[callbackName]= function(data){
+				callback&&callback(data);
 			};
 			
-			document.getElementsByTagName('body')[0].appendChild((function(){
-				var s = document.createElement('script');
-				s.type = 'text/javascript';
-				s.src = URL.replace('callback=?','callback=' + ud);
-				return s;
-			})());
+			// Inject body tag with a script tag for JSONP call
+			var scriptTag = document.createElement("script");
+			scriptTag.type = "text/javascript";
+			
+			scriptTag.src = URL.replace("callback=?","callback=" + callbackName);
+			document.body.appendChild(scriptTag);
+
 		},
 		/*
 			captionator.loadTrackWebVTTCaptions(data, currentTrackElement, callback)
@@ -190,7 +191,7 @@
 		  
 			Nothing
 		*/
-		"loadTrackWebVTTCaptions": function loadTrackWebVTTCaptions(data, currentTrackElement, callback) {
+		"loadTrackWebVTTCaptions": function(data, currentTrackElement, callback) {
 		    var captionData, TrackProcessingOptions = currentTrackElement.videoNode._captionatorOptions || {};
 			if (currentTrackElement.kind === "metadata") {
 				// People can load whatever data they please into metadata tracks.
