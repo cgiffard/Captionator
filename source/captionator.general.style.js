@@ -202,7 +202,7 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 	
 	// Define storage for the available cue area, diminished as further cues are added
 	// Cues occupy the largest possible area they can, either by width or height
-	// (depending on whether the `direction` of the cue is vertical or horizontal)
+	// (depending on whether the `vertical` attribute of the cue is truthy or not)
 	// Cues which have an explicit position set do not detract from this area.
 	// It is the subtitle author's responsibility to ensure they don't overlap if
 	// they decide to override default positioning!
@@ -218,7 +218,7 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		};
 	}
 
-	if (cueObject.direction === "horizontal") {
+	if (!cueObject.vertical) {
 		// Calculate text bounding box
 		// (isn't useful for vertical cues, because we're doing all glyph positioning ourselves.)
 		captionator.applyStyles(DOMNode,{
@@ -272,21 +272,21 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		cueSize = cueSize <= 100 ? cueSize : 100;
 	}
 	
-	cuePaddingLR = cueObject.direction === "horizontal" ? Math.floor(videoMetrics.width * 0.01) : 0;
-	cuePaddingTB = cueObject.direction === "horizontal" ? 0 : Math.floor(videoMetrics.height * 0.01);
+	cuePaddingLR = cueObject.vertical ? Math.floor(videoMetrics.width * 0.01) : 0;
+	cuePaddingTB = cueObject.vertical ? 0 : Math.floor(videoMetrics.height * 0.01);
 	
-	if (cueObject.linePosition === "auto") {
-		cueObject.linePosition = cueObject.direction === "horizontal" ? videoHeightInLines : videoWidthInLines;
-	} else if (String(cueObject.linePosition).match(/\%/)) {
+	if (cueObject.line === "auto") {
+		cueObject.line = cueObject.vertical ? videoHeightInLines : videoWidthInLines;
+	} else if (String(cueObject.line).match(/\%/)) {
 		cueObject.snapToLines = false;
-		cueObject.linePosition = parseFloat(String(cueObject.linePosition).replace(/\%/ig,""));
+		cueObject.line = parseFloat(String(cueObject.line).replace(/\%/ig,""));
 	}
 	
-	if (cueObject.direction === "horizontal") {
+	if (!cueObject.vertical) {
 		cueHeight = pixelLineHeight;
 
-		if (cueObject.textPosition !== "auto" && autoSize) {
-			internalTextPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
+		if (cueObject.position !== "auto" && autoSize) {
+			internalTextPosition = parseFloat(String(cueObject.position).replace(/[^\d\.]/ig,""));
 			
 			// Don't squish the text
 			if (cueSize - internalTextPosition > textBoundingBoxPercentage) {
@@ -302,10 +302,10 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 			cueWidth = videoMetrics.width * (cueSize/100);
 		}
 
-		if (cueObject.textPosition === "auto") {
+		if (cueObject.position === "auto") {
 			cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 		} else {
-			internalTextPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
+			internalTextPosition = parseFloat(String(cueObject.position).replace(/[^\d\.]/ig,""));
 			cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (internalTextPosition/100)) + videoElement._captionator_availableCueArea.left;
 		}
 		
@@ -313,7 +313,7 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 			cueY = ((videoHeightInLines-1) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
 		} else {
 			tmpHeightExclusions = videoMetrics.controlHeight + pixelLineHeight + (cuePaddingTB*2);
-			cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
+			cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.line/100);
 		}
 		
 	} else {
@@ -332,24 +332,24 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		finalLineCharacterCount = characterCount - (charactersPerLine * (lineCount - 1));
 		finalLineCharacterHeight = finalLineCharacterCount * basePixelFontSize;
 		
-		// Work out CueX taking into account linePosition...
+		// Work out CueX taking into account 'line' (linePosition)...
 		if (cueObject.snapToLines === true) {
-			cueX = cueObject.direction === "vertical-lr" ? videoElement._captionator_availableCueArea.left : videoElement._captionator_availableCueArea.right - cueWidth;
+			cueX = cueObject.vertical === "lr" ? videoElement._captionator_availableCueArea.left : videoElement._captionator_availableCueArea.right - cueWidth;
 		} else {
 			var temporaryWidthExclusions = cueWidth + (cuePaddingLR * 2);
-			if (cueObject.direction === "vertical-lr") {
-				cueX = (videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100);
+			if (cueObject.vertical === "lr") {
+				cueX = (videoMetrics.width - temporaryWidthExclusions) * (cueObject.line/100);
 			} else {
-				cueX = (videoMetrics.width-temporaryWidthExclusions) - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100));
+				cueX = (videoMetrics.width-temporaryWidthExclusions) - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.line/100));
 			}
 		}
 		
-		// Work out CueY taking into account textPosition...
-		if (cueObject.textPosition === "auto") {
+		// Work out CueY taking into account 'position' (textPosition)...
+		if (cueObject.position === "auto") {
 			cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) / 2) + videoElement._captionator_availableCueArea.top;
 		} else {
-			cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
-			cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.textPosition/100)) + 
+			cueObject.position = parseFloat(String(cueObject.position).replace(/[^\d\.]/ig,""));
+			cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.position/100)) + 
 					videoElement._captionator_availableCueArea.top;
 		}
 		
@@ -360,17 +360,17 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		characterY = 0;
 		
 		characters.forEach(function(characterSpan,characterCount) {
-			if (cueObject.direction === "vertical-lr") {
+			if (cueObject.vertical === "lr") {
 				characterX = verticalPixelLineHeight * currentLine;
 			} else {
 				characterX = cueWidth - (verticalPixelLineHeight * (currentLine+1));
 			}
 			
-			if (cueObject.alignment === "start" || (cueObject.alignment !== "start" && currentLine < lineCount-1)) {
+			if (cueObject.align === "start" || (cueObject.align !== "start" && currentLine < lineCount-1)) {
 				characterY = (characterPosition * basePixelFontSize) + cuePaddingTB;
-			} else if (cueObject.alignment === "end") {
+			} else if (cueObject.align === "end") {
 				characterY = ((characterPosition * basePixelFontSize)-basePixelFontSize) + ((cueHeight+(cuePaddingTB*2))-finalLineCharacterHeight);
-			} else if (cueObject.alignment === "middle") {
+			} else if (cueObject.align === "middle") {
 				characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
 			}
 			
@@ -414,11 +414,11 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		}
 	}
 	
-	if (cueObject.direction === "horizontal") {
+	if (!cueObject.vertical) {
 		if (captionator.checkDirection(String(cueObject.text)) === "rtl") {
-			cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment];
+			cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.align];
 		} else {	
-			cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
+			cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.align];
 		}
 	}
 
@@ -437,7 +437,7 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 		"boxSizing": "border-box"
 	});
 	
-	if (cueObject.direction === "vertical" || cueObject.direction === "vertical-lr") {
+	if (cueObject.vertical) {
 		// Work out how to shrink the available render area
 		// If subtracting from the right works out to a larger area, subtract from the right.
 		// Otherwise, subtract from the left.	
@@ -472,7 +472,7 @@ captionator.styleCue = function(DOMNode, cueObject, videoElement) {
 				var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
 				cueHeight = (DOMNode.scrollHeight + cuePaddingTB);
 				tmpHeightExclusions = videoMetrics.controlHeight + cueHeight + (cuePaddingTB*2);
-				cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
+				cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.line/100);
 				
 				DOMNode.style.height = cueHeight + "px";
 				DOMNode.style.top = cueY + "px";

@@ -41,17 +41,17 @@ exports.parseCaptions = function(captionData, options) {
 	var cueDefaults = [];
 
 	// Set up timestamp parsers - SRT does WebVTT timestamps as well.
-	var SUBTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-	var SBVTimestampParser			= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-	var SRTTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
-	var SRTChunkTimestampParser		= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
+	var SUBTimestampParser			= /^(\d+)?:?(\d+):(\d+)\.(\d+)\,(\d+)?:?(\d+):(\d+)\.(\d+)\s*(.*)/;
+	var SBVTimestampParser			= /^(\d+)?:?(\d+):(\d+)\.(\d+)\,(\d+)?:?(\d+):(\d+)\.(\d+)\s*(.*)/;
+	var SRTTimestampParser			= /^(\d+)?:?(\d+):(\d+)[\.\,](\d+)\s+\-\-\>\s+(\d+)?:?(\d+):(\d+)[\.\,](\d+)\s*(.*)/;
+	var SRTChunkTimestampParser		= /(\d+)?:?(\d+):(\d+)[\.\,](\d+)/;
 	var GoogleTimestampParser		= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-	var LRCTimestampParser			= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2,3})\]\s*(.*?)$/;
+	var LRCTimestampParser			= /^\[(\d+)?:?(\d+)\:(\d+)\.(\d{2,3})\]\s*(.*?)$/;
 	var WebVTTDEFAULTSCueParser		= /^(DEFAULTS|DEFAULT)\s+\-\-\>\s+(.*)/g;
 	var WebVTTSTYLECueParser		= /^(STYLE|STYLES)\s+\-\-\>\s*\n([\s\S]*)/g;
 	var WebVTTCOMMENTCueParser		= /^(COMMENT|COMMENTS)\s+\-\-\>\s+(.*)/g;
 	var TTMLCheck					= /<tt\s+xml/ig;
-	var TTMLTimestampParserAdv		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)/;
+	var TTMLTimestampParserAdv		= /^(\d+)?:?(\d+):(\d+)\.(\d+)/;
 	var TTMLTimestampParserHuman	= /^([\d\.]+)[smhdwy]/ig; // Under development, will need to study TTML spec more. :)
 	
 	if (captionData) {
@@ -275,6 +275,7 @@ exports.parseCaptions = function(captionData, options) {
 					},compositeCueSettings);
 			
 			// Turn back into string like the TextTrackCue constructor expects
+			// Update: This is braindead. Why did I do this?
 			cueSettings = "";
 			for (var key in compositeCueSettings) {
 				if (compositeCueSettings.hasOwnProperty(key)) {

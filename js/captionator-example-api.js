@@ -34,7 +34,7 @@ var generateMediaControls = function(videoElement) {
 		if (!trackList) return null;
 		
 		if (trackList.length) {
-			for (trackIndex in trackList) {
+			for (var trackIndex = 0; trackIndex < trackList.length; trackIndex ++) {
 				if (trackList.hasOwnProperty(trackIndex)) {
 					(function() {
 						var readyStateTD, modeTD, toggleTD, trackToggle;

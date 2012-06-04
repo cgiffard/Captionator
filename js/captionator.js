@@ -11,7 +11,7 @@
 /*Tab indented, tab = 4 spaces*/
 
 
-/* Build date: Wed Feb 22 2012 16:44:27 GMT+1100 (EST) */
+/* Build date: Mon Jun 04 2012 12:16:46 GMT+1000 (EST) */
 
 (function(){
 	"use strict";
@@ -317,7 +317,6 @@
 		this.endTime = parseFloat(endTime) >= this.startTime ? parseFloat(endTime) : this.startTime;
 		this.text = typeof(text) === "string" || text instanceof captionator.CaptionatorCueStructure ? text : "";
 		this.settings = typeof(settings) === "string" ? settings : "";
-		this.intSettings = {};
 		this.pauseOnExit = !!pauseOnExit;
 		this.wasActive = false;
 	
@@ -329,8 +328,8 @@
 		// vertical growing right (a line extends vertically and is positioned horizontally, with consecutive
 		// lines displayed to the right of each other).
 		// Values:
-		// horizontal, vertical, vertical-lr
-		this.direction = "horizontal";
+		// (primitive) false, "rl", "lr"
+		this.vertical = false;
 	
 		// A boolean indicating whether the line's position is a line position (positioned to a multiple of the
 		// line dimensions of the first line of the cue), or whether it is a percentage of the dimension of the video.
@@ -339,11 +338,11 @@
 		// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
 		// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
 		// position is to depend on the other active tracks.
-		this.linePosition = "auto";
+		this.line = "auto";
 	
 		// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
 		// of the video, as defined by the writing direction.
-		this.textPosition = 50;
+		this.position = 50;
 	
 		// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
 		// be interpreted as a percentage of the video, as defined by the writing direction.
@@ -355,7 +354,7 @@
 		// Unicode bidirectional algorithm and the writing direction. [BIDI]
 		// Values:
 		// start, middle, end
-		this.alignment = "middle";
+		this.align = "middle";
 	
 		// Parse VTT Settings...
 		if (this.settings.length) {
@@ -364,12 +363,19 @@
 			settings = settings.split(/\s+/).filter(function(settingItem) { return settingItem.length > 0;});
 			if (settings instanceof Array) {
 				settings.forEach(function(cueItem) {
-					var settingMap = {"D":"direction","L":"linePosition","T":"textPosition","A":"alignment","S":"size"};
+					var settingMap = {
+						"L":"line",
+						"T":"position",
+						"A":"align",
+						"S":"size",
+						"direction":"direction",
+						"line":"line",
+						"position":"position",
+						"size":"size",
+						"align":"align"
+					};
+					
 					cueItem = cueItem.split(":");
-					if (settingMap[cueItem[0]]) {
-						intSettings[settingMap[cueItem[0]]] = cueItem[1];
-					}
-				
 					if (settingMap[cueItem[0]] in currentCue) {
 						currentCue[settingMap[cueItem[0]]] = cueItem[1];
 					}
@@ -377,7 +383,7 @@
 			}
 		}
 		
-		if (this.linePosition.match(/\%/)) {
+		if (this.line.match(/\%/)) {
 			this.snapToLines = false;
 		}
 	
@@ -667,11 +673,11 @@
 						cueNode.appendChild(cueInner);
 						cueNode.cueObject = cue;
 						cue.domNode = cueNode;
-					
+						
 						// Set the language
 						// Will eventually move to a cue-granular method of specifying language
 						cueNode.setAttribute("lang",cue.track.language);
-					
+						
 						// Plonk the cue contents in
 						cueNode.currentText = cue.text.toString(currentTime);
 						cueInner.innerHTML = cueNode.currentText;
@@ -875,17 +881,17 @@
 		var cueDefaults = [];
 	
 		// Set up timestamp parsers - SRT does WebVTT timestamps as well.
-		var SUBTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\,(\d{2})?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-		var SBVTimestampParser			= /^(\d+)?:?(\d{2}):(\d{2})\.(\d+)\,(\d+)?:?(\d{2}):(\d{2})\.(\d+)\s*(.*)/;
-		var SRTTimestampParser			= /^(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s+\-\-\>\s+(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)\s*(.*)/;
-		var SRTChunkTimestampParser		= /(\d{2})?:?(\d{2}):(\d{2})[\.\,](\d+)/;
+		var SUBTimestampParser			= /^(\d+)?:?(\d+):(\d+)\.(\d+)\,(\d+)?:?(\d+):(\d+)\.(\d+)\s*(.*)/;
+		var SBVTimestampParser			= /^(\d+)?:?(\d+):(\d+)\.(\d+)\,(\d+)?:?(\d+):(\d+)\.(\d+)\s*(.*)/;
+		var SRTTimestampParser			= /^(\d+)?:?(\d+):(\d+)[\.\,](\d+)\s+\-\-\>\s+(\d+)?:?(\d+):(\d+)[\.\,](\d+)\s*(.*)/;
+		var SRTChunkTimestampParser		= /(\d+)?:?(\d+):(\d+)[\.\,](\d+)/;
 		var GoogleTimestampParser		= /^([\d\.]+)\s+\+([\d\.]+)\s*(.*)/;
-		var LRCTimestampParser			= /^\[(\d{2})?:?(\d{2})\:(\d{2})\.(\d{2,3})\]\s*(.*?)$/;
+		var LRCTimestampParser			= /^\[(\d+)?:?(\d+)\:(\d+)\.(\d{2,3})\]\s*(.*?)$/;
 		var WebVTTDEFAULTSCueParser		= /^(DEFAULTS|DEFAULT)\s+\-\-\>\s+(.*)/g;
 		var WebVTTSTYLECueParser		= /^(STYLE|STYLES)\s+\-\-\>\s*\n([\s\S]*)/g;
 		var WebVTTCOMMENTCueParser		= /^(COMMENT|COMMENTS)\s+\-\-\>\s+(.*)/g;
 		var TTMLCheck					= /<tt\s+xml/ig;
-		var TTMLTimestampParserAdv		= /^(\d{2})?:?(\d{2}):(\d{2})\.(\d+)/;
+		var TTMLTimestampParserAdv		= /^(\d+)?:?(\d+):(\d+)\.(\d+)/;
 		var TTMLTimestampParserHuman	= /^([\d\.]+)[smhdwy]/ig; // Under development, will need to study TTML spec more. :)
 		
 		if (captionData) {
@@ -1109,6 +1115,7 @@
 						},compositeCueSettings);
 				
 				// Turn back into string like the TextTrackCue constructor expects
+				// Update: This is braindead. Why did I do this?
 				cueSettings = "";
 				for (var key in compositeCueSettings) {
 					if (compositeCueSettings.hasOwnProperty(key)) {
@@ -1641,7 +1648,7 @@
 		
 		// Define storage for the available cue area, diminished as further cues are added
 		// Cues occupy the largest possible area they can, either by width or height
-		// (depending on whether the `direction` of the cue is vertical or horizontal)
+		// (depending on whether the `vertical` attribute of the cue is truthy or not)
 		// Cues which have an explicit position set do not detract from this area.
 		// It is the subtitle author's responsibility to ensure they don't overlap if
 		// they decide to override default positioning!
@@ -1657,7 +1664,7 @@
 			};
 		}
 	
-		if (cueObject.direction === "horizontal") {
+		if (!cueObject.vertical) {
 			// Calculate text bounding box
 			// (isn't useful for vertical cues, because we're doing all glyph positioning ourselves.)
 			captionator.applyStyles(DOMNode,{
@@ -1711,21 +1718,21 @@
 			cueSize = cueSize <= 100 ? cueSize : 100;
 		}
 		
-		cuePaddingLR = cueObject.direction === "horizontal" ? Math.floor(videoMetrics.width * 0.01) : 0;
-		cuePaddingTB = cueObject.direction === "horizontal" ? 0 : Math.floor(videoMetrics.height * 0.01);
+		cuePaddingLR = cueObject.vertical ? Math.floor(videoMetrics.width * 0.01) : 0;
+		cuePaddingTB = cueObject.vertical ? 0 : Math.floor(videoMetrics.height * 0.01);
 		
-		if (cueObject.linePosition === "auto") {
-			cueObject.linePosition = cueObject.direction === "horizontal" ? videoHeightInLines : videoWidthInLines;
-		} else if (String(cueObject.linePosition).match(/\%/)) {
+		if (cueObject.line === "auto") {
+			cueObject.line = cueObject.vertical ? videoHeightInLines : videoWidthInLines;
+		} else if (String(cueObject.line).match(/\%/)) {
 			cueObject.snapToLines = false;
-			cueObject.linePosition = parseFloat(String(cueObject.linePosition).replace(/\%/ig,""));
+			cueObject.line = parseFloat(String(cueObject.line).replace(/\%/ig,""));
 		}
 		
-		if (cueObject.direction === "horizontal") {
+		if (!cueObject.vertical) {
 			cueHeight = pixelLineHeight;
 	
-			if (cueObject.textPosition !== "auto" && autoSize) {
-				internalTextPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
+			if (cueObject.position !== "auto" && autoSize) {
+				internalTextPosition = parseFloat(String(cueObject.position).replace(/[^\d\.]/ig,""));
 				
 				// Don't squish the text
 				if (cueSize - internalTextPosition > textBoundingBoxPercentage) {
@@ -1741,10 +1748,10 @@
 				cueWidth = videoMetrics.width * (cueSize/100);
 			}
 	
-			if (cueObject.textPosition === "auto") {
+			if (cueObject.position === "auto") {
 				cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) / 2) + videoElement._captionator_availableCueArea.left;
 			} else {
-				internalTextPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
+				internalTextPosition = parseFloat(String(cueObject.position).replace(/[^\d\.]/ig,""));
 				cueX = ((videoElement._captionator_availableCueArea.right - cueWidth) * (internalTextPosition/100)) + videoElement._captionator_availableCueArea.left;
 			}
 			
@@ -1752,7 +1759,7 @@
 				cueY = ((videoHeightInLines-1) * pixelLineHeight) + videoElement._captionator_availableCueArea.top;
 			} else {
 				tmpHeightExclusions = videoMetrics.controlHeight + pixelLineHeight + (cuePaddingTB*2);
-				cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
+				cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.line/100);
 			}
 			
 		} else {
@@ -1771,24 +1778,24 @@
 			finalLineCharacterCount = characterCount - (charactersPerLine * (lineCount - 1));
 			finalLineCharacterHeight = finalLineCharacterCount * basePixelFontSize;
 			
-			// Work out CueX taking into account linePosition...
+			// Work out CueX taking into account 'line' (linePosition)...
 			if (cueObject.snapToLines === true) {
-				cueX = cueObject.direction === "vertical-lr" ? videoElement._captionator_availableCueArea.left : videoElement._captionator_availableCueArea.right - cueWidth;
+				cueX = cueObject.vertical === "lr" ? videoElement._captionator_availableCueArea.left : videoElement._captionator_availableCueArea.right - cueWidth;
 			} else {
 				var temporaryWidthExclusions = cueWidth + (cuePaddingLR * 2);
-				if (cueObject.direction === "vertical-lr") {
-					cueX = (videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100);
+				if (cueObject.vertical === "lr") {
+					cueX = (videoMetrics.width - temporaryWidthExclusions) * (cueObject.line/100);
 				} else {
-					cueX = (videoMetrics.width-temporaryWidthExclusions) - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.linePosition/100));
+					cueX = (videoMetrics.width-temporaryWidthExclusions) - ((videoMetrics.width - temporaryWidthExclusions) * (cueObject.line/100));
 				}
 			}
 			
-			// Work out CueY taking into account textPosition...
-			if (cueObject.textPosition === "auto") {
+			// Work out CueY taking into account 'position' (textPosition)...
+			if (cueObject.position === "auto") {
 				cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) / 2) + videoElement._captionator_availableCueArea.top;
 			} else {
-				cueObject.textPosition = parseFloat(String(cueObject.textPosition).replace(/[^\d\.]/ig,""));
-				cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.textPosition/100)) + 
+				cueObject.position = parseFloat(String(cueObject.position).replace(/[^\d\.]/ig,""));
+				cueY = ((videoElement._captionator_availableCueArea.bottom - cueHeight) * (cueObject.position/100)) + 
 						videoElement._captionator_availableCueArea.top;
 			}
 			
@@ -1799,17 +1806,17 @@
 			characterY = 0;
 			
 			characters.forEach(function(characterSpan,characterCount) {
-				if (cueObject.direction === "vertical-lr") {
+				if (cueObject.vertical === "lr") {
 					characterX = verticalPixelLineHeight * currentLine;
 				} else {
 					characterX = cueWidth - (verticalPixelLineHeight * (currentLine+1));
 				}
 				
-				if (cueObject.alignment === "start" || (cueObject.alignment !== "start" && currentLine < lineCount-1)) {
+				if (cueObject.align === "start" || (cueObject.align !== "start" && currentLine < lineCount-1)) {
 					characterY = (characterPosition * basePixelFontSize) + cuePaddingTB;
-				} else if (cueObject.alignment === "end") {
+				} else if (cueObject.align === "end") {
 					characterY = ((characterPosition * basePixelFontSize)-basePixelFontSize) + ((cueHeight+(cuePaddingTB*2))-finalLineCharacterHeight);
-				} else if (cueObject.alignment === "middle") {
+				} else if (cueObject.align === "middle") {
 					characterY = (((cueHeight - (cuePaddingTB*2))-finalLineCharacterHeight)/2) + (characterPosition * basePixelFontSize);
 				}
 				
@@ -1853,11 +1860,11 @@
 			}
 		}
 		
-		if (cueObject.direction === "horizontal") {
+		if (!cueObject.vertical) {
 			if (captionator.checkDirection(String(cueObject.text)) === "rtl") {
-				cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.alignment];
+				cueAlignment = {"start":"right","middle":"center","end":"left"}[cueObject.align];
 			} else {	
-				cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.alignment];
+				cueAlignment = {"start":"left","middle":"center","end":"right"}[cueObject.align];
 			}
 		}
 	
@@ -1876,7 +1883,7 @@
 			"boxSizing": "border-box"
 		});
 		
-		if (cueObject.direction === "vertical" || cueObject.direction === "vertical-lr") {
+		if (cueObject.vertical) {
 			// Work out how to shrink the available render area
 			// If subtracting from the right works out to a larger area, subtract from the right.
 			// Otherwise, subtract from the left.	
@@ -1911,7 +1918,7 @@
 					var upwardAjustment = (DOMNode.scrollHeight - cueHeight);
 					cueHeight = (DOMNode.scrollHeight + cuePaddingTB);
 					tmpHeightExclusions = videoMetrics.controlHeight + cueHeight + (cuePaddingTB*2);
-					cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.linePosition/100);
+					cueY = (videoMetrics.height - tmpHeightExclusions) * (cueObject.line/100);
 					
 					DOMNode.style.height = cueHeight + "px";
 					DOMNode.style.top = cueY + "px";

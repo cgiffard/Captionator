@@ -96,11 +96,11 @@ captionator.rebuildCaptions = function(videoElement) {
 					cueNode.appendChild(cueInner);
 					cueNode.cueObject = cue;
 					cue.domNode = cueNode;
-				
+					
 					// Set the language
 					// Will eventually move to a cue-granular method of specifying language
 					cueNode.setAttribute("lang",cue.track.language);
-				
+					
 					// Plonk the cue contents in
 					cueNode.currentText = cue.text.toString(currentTime);
 					cueInner.innerHTML = cueNode.currentText;

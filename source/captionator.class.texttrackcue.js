@@ -15,7 +15,6 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 	this.endTime = parseFloat(endTime) >= this.startTime ? parseFloat(endTime) : this.startTime;
 	this.text = typeof(text) === "string" || text instanceof captionator.CaptionatorCueStructure ? text : "";
 	this.settings = typeof(settings) === "string" ? settings : "";
-	this.intSettings = {};
 	this.pauseOnExit = !!pauseOnExit;
 	this.wasActive = false;
 
@@ -27,8 +26,8 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 	// vertical growing right (a line extends vertically and is positioned horizontally, with consecutive
 	// lines displayed to the right of each other).
 	// Values:
-	// horizontal, vertical, vertical-lr
-	this.direction = "horizontal";
+	// (primitive) false, "rl", "lr"
+	this.vertical = false;
 
 	// A boolean indicating whether the line's position is a line position (positioned to a multiple of the
 	// line dimensions of the first line of the cue), or whether it is a percentage of the dimension of the video.
@@ -37,11 +36,11 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 	// Either a number giving the position of the lines of the cue, to be interpreted as defined by the
 	// writing direction and snap-to-lines flag of the cue, or the special value auto, which means the
 	// position is to depend on the other active tracks.
-	this.linePosition = "auto";
+	this.line = "auto";
 
 	// A number giving the position of the text of the cue within each line, to be interpreted as a percentage
 	// of the video, as defined by the writing direction.
-	this.textPosition = 50;
+	this.position = 50;
 
 	// A number giving the size of the box within which the text of each line of the cue is to be aligned, to
 	// be interpreted as a percentage of the video, as defined by the writing direction.
@@ -53,7 +52,7 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 	// Unicode bidirectional algorithm and the writing direction. [BIDI]
 	// Values:
 	// start, middle, end
-	this.alignment = "middle";
+	this.align = "middle";
 
 	// Parse VTT Settings...
 	if (this.settings.length) {
@@ -62,12 +61,19 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 		settings = settings.split(/\s+/).filter(function(settingItem) { return settingItem.length > 0;});
 		if (settings instanceof Array) {
 			settings.forEach(function(cueItem) {
-				var settingMap = {"D":"direction","L":"linePosition","T":"textPosition","A":"alignment","S":"size"};
+				var settingMap = {
+					"L":"line",
+					"T":"position",
+					"A":"align",
+					"S":"size",
+					"direction":"direction",
+					"line":"line",
+					"position":"position",
+					"size":"size",
+					"align":"align"
+				};
+				
 				cueItem = cueItem.split(":");
-				if (settingMap[cueItem[0]]) {
-					intSettings[settingMap[cueItem[0]]] = cueItem[1];
-				}
-			
 				if (settingMap[cueItem[0]] in currentCue) {
 					currentCue[settingMap[cueItem[0]]] = cueItem[1];
 				}
@@ -75,7 +81,7 @@ captionator.TextTrackCue = function TextTrackCue(id, startTime, endTime, text, s
 		}
 	}
 	
-	if (this.linePosition.match(/\%/)) {
+	if (this.line.match(/\%/)) {
 		this.snapToLines = false;
 	}
 
