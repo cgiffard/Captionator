@@ -3,19 +3,20 @@ Captionator
 
 **Simple closed-captioning polyfill for HTML5. Just 8KB when gzipped!**
 
-
 What does Captionator do?
 -------------------------
 
 * Implements the WHATWG `TimedTextTrack` Specification, complete with the full JavaScript API
 * Supports the `<track>` element
 * Supports 100% of WebVTT, along with WebVTT v2 proposed features
-* Additional support for SRT, SBV, and SUB caption/subtitle formats
+* Additional support for SRT, Youtube/SBV, SUB, LRC, and TTML caption/subtitle formats
 * Works in Firefox 3.5+, IE9, Safari 4+, Chrome, Opera 11... basically any browser which supports HTML5 Video!
 * Small, configurable, and under active development
 * Library independent
 * Accessible, with ARIA support
 * Minimal global namespace footprint (written with a closure)
+* Captionator is *not* a video player (this means you can write your own!)
+* Currently the **most comprehensive** polyfill available for Closed Captioning!
 
 What can I do with Captionator?
 --------------------------
@@ -175,6 +176,7 @@ The following lists options which you can pass to captionator:
 * `debugMode` (Boolean) - If true, draws a canvas with debugging information for cue positioning on top (in z-space) of the video. The canvas displays `vertical`, `vertical-lr`, and `horizontal` line divisions, as well as Captionator's own understanding of the available cue area (post cue-rendering.) This option is not available in the minified builds of Captionator.
 * `appendCueCanvasTo` (HTMLElement | DOM Query as string) - Defines a node in the document within which Captionator should render the video cues. This function is intended to allow you to create a wrapper div and have Captionator render cues within it - hopefully easing the process of making a custom video player. If successful, and Captionator is able to find the wrapper node based on your input, it will set the `top` and `left` values of its own cue canvas to zero, rather than finding the offset position of the video element itself, and append its cue canvas within the wrapper when rendering. If the query fails, the cue canvas will be appended to the body as normal, and positioned using the offset position of the video element.
 * `enableHighResolution` (Boolean) - If true, Captionator sets up a 20ms timer for refreshing cues and captions, firing much more rapidly than the default `timeupdate` event listener on the video element. This option causes Captionator to use a lot more of the user's CPU time - only use this if you have a real need for quick, <250ms response times. This option defaults to false.
+* `forceCaptionify` (Boolean) - If true, Captionator will ignore checks for native TextTrack support in browsers and press on ahead anyway. It will also not fail if the element/s to be captioned are not videos. If you're not sure about this, **DO NOT** enable this option. It will only create more bugs. Do not enable in production.
 
 #### Styling Options ####
 * `minimumFontSize` (Float) - Defines the minimum allowable font size with which Captionator will render cues (in points.) Defaults to 10pt.
@@ -188,17 +190,67 @@ The following lists options which you can pass to captionator:
 Video and Audio tracks (MediaTrack)
 -----------------------------------
 
-**PLEASE NOTE:** The WHATWG now has a specification for Media Tracks, which is separated out into `audioTrack` and `videoTrack` categories. For now, this functionality remains in Captionator, but it will change. **I would advise you to avoid using it for now.**
+A/V track support has been removed from Captionator as the specification changed.
 
-Captionator has experimental support for HTML5 video and Audio tracks (designed both for assistive purposes, and for enriching existing media.)
 
-This is a documentation category in and of itself, so I've moved it to [MediaTrack.markdown](https://github.com/cgiffard/Captionator/blob/master/MediaTrack.markdown).
+Building Captionator.js
+-----------------------
+
+Captionator.js comes pre-built in both unminified and minified versions, but you can build it yourself.
+
+You'll need node.js, jake, jshint, and uglify-js. You can use this [guide to installing node.js](https://github.com/joyent/node/wiki/Installation) if you get stuck.
+
+Once that's done, install the dependencies with npm:
+
+```sh
+npm install --global jshint
+npm install --global jake
+npm install --global uglify-js
+```
+
+All done? Now, do whatever you need to do to Captionator by modifying its various components in the `/source` directory. When you're ready to build, you can just:
+
+```
+jake
+```
+
+The default jake task builds and lints the file, minifies it, and runs through the test suite. That's it! All files created are placed in the `/js` directory, ready for production use.
+
+You can also independently run each of the following tasks:
+
+* `jake test` - runs the Captionator test suite
+* `jake build` - builds the unminified Captionator.js
+* `jake minify` - generates the minified `captionator-min.js`
+* `jake lint` - runs JSHINT over the unminified file.
+
+### Autobuild
+
+If you use a Mac, and Safari, autobuild.pl is a little script which monitors the source files, and then rebuilds, minifies, and lints captionator.js - and reloads your Safari tab whenever it detects changes. Using it is as simple as running:
+
+```sh
+./autobuild.pl
+```
+
+## Notes about newer browsers
+
+As browers start to implement WebVTT and the TextTrack JS API, Captionator.js will step back and your captions will be delivered by the native capabilities of those browsers.
+In some cases though, the implementations are buggy or incomplete. Currently, both IE10's and Chrome's WebVTT & JS API implementations are incomplete. Captionator.js will not
+run in these browsers. Instead, it quietly quits. You can detect whether this is the case by checking for a `false` return value from the `captionator.captionify()` function.
+
+Currently, Chrome's implementation of TextTracks breaks Captionator, but doesn't actually work on its own yet. I advise that you turn off TextTrack support in `chrome://flags`.
+
+IE10's implementation is not complete, but it does work.
+
+If you understand that you'll probably break things but want to try it anyway, you can disable Captionator's TextTrack support checking by setting the `forceCaptionify` option
+to `true`.
 
 
 New Features
 ---------------
 
 * Supports WebVTT proposed features such as `DEFAULTS`, `STYLE`, and `COMMENT` cues
+* Now supports TTML and LRC
+* Advanced layout engine ensures cues are appropriately sized and positioned regardless of how many are enabled at any one time (with limits, obviously!)
 * Optional auto cue sizing algorithm, which sizes the cue to the text bounding box
 * Brand new WebVTT renderer, with new styling options!
 * Performs automatic validation of WebVTT cue spans and HTML!

@@ -3,7 +3,7 @@ TODO
 
 * Fix Japanese, Korean, Chinese text line breaking in vertical captions
 * Fix BCP-47 language string parsing
-* Enable WebVTT inline style support (already parsed, but ignored by renderer)
+* **DONE!** Enable WebVTT inline style support (already parsed, but ignored by renderer)
 * **50% - `addCue` complete** Implement <strike>`addCue`</strike> and `removeCue` events _properly_ for TextTrack objects
 * **DONE!** <strike>API Reference Docs</strike>
 * **DONE!** <strike>Allow dynamic re-enabling and disabling of subtitles (possibly through the Multitrack API - below)</strike>
@@ -18,14 +18,17 @@ TODO
 
 ## Big Stuff ##
 
+* Make it work in old Internet Explorer versions (<9) - This is hard, and will probably require importing underscore.js or a similar syntax-sugar library. A custom wrapper function will enable extracting .currentTime from Flash and Silverlight players.
 * Include QUnit test framework & tests file
-* Externalise & modularise parser, enabling import of alternate parsers into captionator core
-	* Write a parser for TTML
-	* **50%** Write a parser for LRC
+* **50%** Externalise & modularise parser, enabling import of alternate parsers into captionator core
+	* **DONE!** <strike>Write a parser for TTML</strike>
+	* **DONE!** <strike>Write a parser for LRC</strike>
+	* Write a parser for SSA/ASS
 * Implement animation options
+* **DONE!** <strike>Split and build with Jake</strike>
 * **DONE!** <strike>WebVTT Support! (Just compatibility checking to do now!)</strike>
 * **DONE!** <strike>Include compatibility with the in-development JS TimedTextTrack API described by [this WHATWG Document](http://www.whatwg.org/specs/web-apps/current-work/multipage/video.html).</strike>
-* **DONE!** Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)
+* **DONE!** <strike>Respect extra cue settings as described by WebVTT (currently Captionator reads in, but ignores, most of the cue settings.)</strike>
 
 ## Bugs ##
 

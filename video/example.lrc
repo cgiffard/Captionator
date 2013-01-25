@@ -1,0 +1,34 @@
+[00:03.120]Item 1
+[00:05.548]some more text...
+[00:09.927]
+[00:21.016]Even more text
+[00:23.764]Testing lyric
+[00:26.564]lyric...
+[00:28.374]..and more lyrics
+[00:32.083]
+[00:32.291]The whole LRC enhanced format
+[00:35.226]including cue-internal <00:36.000>timing <00:36.500>tags
+[00:37.482]are supported
+[00:39.850]
+[00:40.275]I'm ignoring all color data
+[00:43.746]
+[00:44.006]since it doesn't fit the WebVTT spec
+[00:46.531]I think this is
+[00:49.353]a reasonable tradeoff
+[00:52.183]for allowing LRC on the web
+[00:55.363]
+[00:56.644]Because of the way Captionator.js works
+[00:57.895]You can include <c.arduino>WebVTT class tags</c.arduino>
+[00:59.266]even in LRC, or TTML
+[01:01.031]this obviously isn't legal in those specs
+[01:02.304]
+[01:02.401]but hell, I'm doing it anyway
+[01:05.075]just you try and stop me
+[01:07.562]
+[01:08.016]here's some more text
+[01:09.133]and even more
+[01:10.854]this file was adapted
+[01:13.557]
+[01:13.699]from the LRC example at
+[01:16.030]http://www.stepmania.com/wiki/Song_Lyrics_-_LRC_Format
+[01:19.485]

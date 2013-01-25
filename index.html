@@ -7,22 +7,30 @@
 	</head>
 	<body>
 		<h1>HTML5 Video Closed Captioning Example</h1>
-		<video controls autobuffer id="videoTest" width="1010" height="464">
+		<video controls autobuffer id="videoTest" width="1010" height="464" style="width: 100%; height: auto !important;">
 			<source src="video/arduino.m4v" type="video/mp4" />
 			<source src="video/arduino.webm" type="video/webm" />
 			<source src="video/arduino.ogv" type="video/ogg" />
 
 			<!-- Subtitles for this video -->
-			<track kind="subtitles" src="video/arduino-en.vtt" type="text/vtt" srclang="en" label="English Subtitles" />
+			<track kind="subtitles" src="video/arduino-en.vtt" type="text/vtt" srclang="en" label="English Subtitles" default />
 			<track kind="subtitles" src="video/arduino-de.vtt" type="text/vtt" srclang="de" label="German Subtitles" />
 			<track kind="subtitles" src="video/arduino-ja.vtt" type="text/vtt" srclang="ja" label="Japanese Subtitles" />
 
+			<!-- TTML Example (not for this video) -->
+			<!-- I haven't included this file in the repo because it's not publically licenced. Before I do a proper release I'll find a CC / FOSS TTML file. -->
+			<track kind="subtitles" src="video/ttml-govt.xml" type="application/ttml+xml" srclang="en" label="TTML Example" />
+
+			<!-- LRC Example (not for this video) -->
+			<!-- Adapted from: http://www.stepmania.com/wiki/Song_Lyrics_-_LRC_Format -->
+			<track kind="descriptions" src="video/example.lrc" type="text/lrc" srclang="en" label="LRC Example" default />
+
 			<!-- WebVTT Testing & Examples -->
 			<track kind="captions" src="video/acid.vtt" type="text/vtt" srclang="en" label="WebVTT Acid Test" />
-			<track kind="captions" src="video/example.vtt" type="text/vtt" srclang="en" label="WHATWG's WebVTT Example" default />
+			<track kind="captions" src="video/example.vtt" type="text/vtt" srclang="en" label="WHATWG's WebVTT Example"  />
 		</video>
 		<p><a href="index.html?debug">WebVTT renderer debug mode</a> | <a href="index.html?boundingBox">Size cues by text bounding box</a> | <a href="index.html?highres">High Resolution Mode</a></p>
-		<h2>Media Controls</h2>
+		<h2 id="mediacontrols">Media Controls</h2>
 
 		<!-- Include Captionator -->
 		<script type="text/javascript" src="js/captionator.js"></script>
