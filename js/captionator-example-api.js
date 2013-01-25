@@ -41,6 +41,8 @@ var generateMediaControls = function(videoElement) {
 						var currentTrack = trackList[trackIndex];
 						var trackRow = document.createElement("tr");
 						
+						if (!currentTrack) return;
+						
 						trackRow.innerHTML ="<td>" + currentTrack.kind + "</td>" +
 											"<td>" + currentTrack.label + "</td>" +
 											"<td>" + currentTrack.language + "</td>" +
