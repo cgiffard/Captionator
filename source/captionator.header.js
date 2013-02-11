@@ -7,4 +7,17 @@ var cueBackgroundColour	= [0,0,0,0.5];	//	R,G,B,A
 var objectsCreated = false;				//	We don't want to create objects twice, or instanceof won't work
 
 var captionator = {};
-window.captionator = captionator;
+
+// browserify, node, etc.
+if (typeof module === 'object' && typeof module.exports === 'object') {
+	// node-style module
+	module.exports = captionator;
+} else if (typeof define === 'function' && define.amd) {
+	// amd
+	define('captionator', function () {
+		return captionator;
+	});
+} else {
+	// everything else
+	window.captionator = captionator;
+}
