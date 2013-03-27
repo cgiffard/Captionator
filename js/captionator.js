@@ -13,7 +13,7 @@
 
 /* Build date: Fri Jan 25 2013 15:37:24 GMT+1100 (EST) */
 
-(function(){
+;(function(){
 	"use strict";
 
 	//	Variables you might want to tweak
