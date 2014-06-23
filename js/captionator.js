@@ -839,7 +839,7 @@
 					}
 				};
 	
-				captionator.processVideoElement(videoElements[elementIndex],defaultLanguage,options);
+				captionator.processVideoElement(videoElement,defaultLanguage,options);
 			});
 	
 			return true;
@@ -2165,6 +2165,7 @@
 	
 		// Style node!
 		captionator.applyStyles(containerObject,{
+			"pointerEvents": "none",
 			"position": "absolute",
 			"overflow": "hidden",
 			"zIndex": 100,
